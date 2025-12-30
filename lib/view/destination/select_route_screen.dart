@@ -28,8 +28,6 @@ class SelectRouteScreen extends StatelessWidget {
     destinationController.routeListTiles.assignAll([
       _buildListTile(Colors.green, AppStrings.yourLocation,
           destinationController.locationController),
-      _buildListTile(Colors.yellow, AppStrings.addStop,
-          destinationController.addStopController),
       _buildListTile(Colors.yellow, AppStrings.enterDestination,
           destinationController.destinationController),
     ]);
@@ -70,7 +68,6 @@ class SelectRouteScreen extends StatelessWidget {
               onTap: () {
                 Get.back();
                 destinationController.destinationController.clear();
-                destinationController.addStopController.clear();
               },
               child: Image.asset(
                 AppIcons.arrowBack,
@@ -138,8 +135,6 @@ class SelectRouteScreen extends StatelessWidget {
                                 destinationController.routeListTiles[0],
                                 _buildDivider(),
                                 destinationController.routeListTiles[1],
-                                _buildDivider(),
-                                destinationController.routeListTiles[2],
                               ],
                             )),
                       ],
@@ -159,22 +154,8 @@ class SelectRouteScreen extends StatelessWidget {
                       color: AppColors.smallTextColor,
                     ),
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(
-                      left: languageController.arb.value ? 0 : AppSize.size23,
-                      right: languageController.arb.value
-                          ? AppSize.size23
-                          : AppSize.size0,
-                      top: AppSize.size110,
-                    ),
-                    child: Container(
-                      width: AppSize.size1,
-                      height: AppSize.size46,
-                      color: AppColors.smallTextColor,
-                    ),
-                  ),
                   Positioned(
-                    bottom: AppSize.size55,
+                    bottom: AppSize.size10,
                     left: languageController.arb.value ? AppSize.size16 : null,
                     right: languageController.arb.value ? null : AppSize.size16,
                     child: GestureDetector(
@@ -284,7 +265,10 @@ class SelectRouteScreen extends StatelessWidget {
       ),
       child: GestureDetector(
         onTap: () {
-          Get.to(() => SelectRouteWithMapScreen());
+          Get.to(() => SelectRouteWithMapScreen(
+            pickupAddress: destinationController.locationController.text,
+            destinationAddress: destinationController.destinationController.text,
+          ));
         },
         child: Container(
           height: AppSize.size46,

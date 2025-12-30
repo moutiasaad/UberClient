@@ -15,7 +15,9 @@ import '../../config/app_size.dart';
 import '../../config/font_family.dart';
 
 class CancelCarScreen extends StatelessWidget {
-  CancelCarScreen({Key? key}) : super(key: key);
+  final int? rideId;
+
+  CancelCarScreen({Key? key, this.rideId}) : super(key: key);
 
   CancelCarController cancelCarController = Get.put(CancelCarController());
   final LanguageController languageController = Get.put(LanguageController());

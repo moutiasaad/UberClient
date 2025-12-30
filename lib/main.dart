@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
 import 'package:prime_taxi_flutter_ui_kit/controllers/storage_controller.dart';
 import 'package:prime_taxi_flutter_ui_kit/localization/app_translation.dart';
@@ -7,6 +8,7 @@ import 'package:prime_taxi_flutter_ui_kit/view/splash/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init();
   String? languageCode = await StorageController.instance.getLanguage();
   String? countryCode = await StorageController.instance.getCountryCode();
   runApp(MyApp(

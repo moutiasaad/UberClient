@@ -345,4 +345,59 @@ class MyRidesController extends GetxController {
       Fluttertoast.showToast(msg: errorMessage);
     }
   }
+
+  // Update markers for a specific ride
+  Future<void> updateMarkersForRide({
+    required double pickupLat,
+    required double pickupLng,
+    required double dropoffLat,
+    required double dropoffLng,
+  }) async {
+    markers.clear();
+
+    // Add pickup marker
+    addCustomMarker(
+      LatLng(pickupLat, pickupLng),
+      'pickup_marker',
+      'Pickup',
+      'Pickup Location',
+      BitmapDescriptor.fromBytes(await getBytesFromAsset(
+        path: AppIcons.locationPin1,
+        height: AppSize.size60.toInt(),
+        width: AppSize.size60.toInt(),
+      )),
+    );
+
+    // Add dropoff marker
+    addCustomMarker(
+      LatLng(dropoffLat, dropoffLng),
+      'dropoff_marker',
+      'Dropoff',
+      'Dropoff Location',
+      BitmapDescriptor.fromBytes(await getBytesFromAsset(
+        path: AppIcons.locationPin2,
+        height: AppSize.size44.toInt(),
+        width: AppSize.size30.toInt(),
+      )),
+    );
+
+    // Move camera to show both markers
+    if (myMapController != null) {
+      final bounds = LatLngBounds(
+        southwest: LatLng(
+          pickupLat < dropoffLat ? pickupLat : dropoffLat,
+          pickupLng < dropoffLng ? pickupLng : dropoffLng,
+        ),
+        northeast: LatLng(
+          pickupLat > dropoffLat ? pickupLat : dropoffLat,
+          pickupLng > dropoffLng ? pickupLng : dropoffLng,
+        ),
+      );
+      myMapController!.animateCamera(
+        CameraUpdate.newLatLngBounds(bounds, 50),
+      );
+    }
+
+    update();
+  }
 }

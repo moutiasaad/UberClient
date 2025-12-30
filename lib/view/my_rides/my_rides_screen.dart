@@ -4,9 +4,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
 import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
 import 'package:prime_taxi_flutter_ui_kit/controllers/my_rides_controller.dart';
+import 'package:prime_taxi_flutter_ui_kit/models/ride_model.dart';
 import 'package:prime_taxi_flutter_ui_kit/view/my_rides/my_rides_cancelled_details_screen.dart';
 import 'package:prime_taxi_flutter_ui_kit/view/my_rides/my_rides_active_details_screen.dart';
 import 'package:prime_taxi_flutter_ui_kit/view/my_rides/my_rides_completed_details_screen.dart';
@@ -16,11 +18,89 @@ import '../../config/app_icons.dart';
 import '../../config/app_size.dart';
 import '../../config/font_family.dart';
 
-class MyRidesScreen extends StatelessWidget {
-  MyRidesScreen({Key? key}) : super(key: key);
+class MyRidesScreen extends StatefulWidget {
+  const MyRidesScreen({Key? key}) : super(key: key);
 
-  MyRidesController myRidesController = Get.put(MyRidesController());
+  @override
+  State<MyRidesScreen> createState() => _MyRidesScreenState();
+}
+
+class _MyRidesScreenState extends State<MyRidesScreen> {
+  final MyRidesController myRidesController = Get.put(MyRidesController());
   final LanguageController languageController = Get.put(LanguageController());
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRideHistory();
+  }
+
+  Future<void> _loadRideHistory() async {
+    await myRidesController.fetchRideHistory();
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final rideDate = DateTime(date.year, date.month, date.day);
+
+    if (rideDate == today) {
+      return 'Today, ${DateFormat('h:mm a').format(date)}';
+    } else if (rideDate == today.subtract(const Duration(days: 1))) {
+      return 'Yesterday, ${DateFormat('h:mm a').format(date)}';
+    } else {
+      return DateFormat('EEEE, MMM d').format(date);
+    }
+  }
+
+  String _getVehicleIcon(String? vehicleType) {
+    switch (vehicleType?.toLowerCase()) {
+      case 'bike':
+        return AppIcons.bike2Icon;
+      case 'auto':
+      case 'rickshaw':
+        return AppIcons.rikshaw2Icon;
+      case 'car':
+      default:
+        return AppIcons.carModelIcon;
+    }
+  }
+
+  Color _getStatusColor(RideModel ride) {
+    if (ride.isActive) {
+      return AppColors.primaryColor;
+    } else if (ride.isCancelled) {
+      return AppColors.redColor;
+    } else if (ride.isCompleted) {
+      return AppColors.parrotColor;
+    }
+    return AppColors.smallTextColor;
+  }
+
+  String _getStatusText(RideModel ride) {
+    if (ride.statusText != null) {
+      return ride.statusText!;
+    }
+    if (ride.isActive) {
+      return 'Active';
+    } else if (ride.isCancelled) {
+      return 'Cancelled';
+    } else if (ride.isCompleted) {
+      return 'Completed';
+    }
+    return ride.status.toUpperCase();
+  }
+
+  void _navigateToDetails(RideModel ride) {
+    if (ride.isActive) {
+      Get.to(() => MyRidesActiveDetailsScreen(rideId: ride.id));
+    } else if (ride.isCancelled) {
+      Get.to(() => MyRidesCancelledDetailsScreen());
+    } else if (ride.isCompleted) {
+      Get.to(() => MyRidesCompletedDetailsScreen());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,8 +118,7 @@ class MyRidesScreen extends StatelessWidget {
     );
   }
 
-  //My Rides Content
-  _appBar() {
+  PreferredSizeWidget _appBar() {
     return AppBar(
       backgroundColor: AppColors.backGroundColor,
       elevation: AppSize.size0,
@@ -109,71 +188,104 @@ class MyRidesScreen extends StatelessWidget {
     );
   }
 
-  _myRidesContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(
-        top: AppSize.size24,
-        right: AppSize.size20,
-        left: AppSize.size20,
-      ),
+  Widget _myRidesContent() {
+    return Obx(() {
+      if (myRidesController.isLoadingRides.value) {
+        return const Center(
+          child: CircularProgressIndicator(color: AppColors.primaryColor),
+        );
+      }
+
+      if (myRidesController.rideHistory.isEmpty) {
+        return _buildEmptyState();
+      }
+
+      return RefreshIndicator(
+        onRefresh: _loadRideHistory,
+        color: AppColors.primaryColor,
+        child: ListView.builder(
+          padding: const EdgeInsets.only(
+            top: AppSize.size24,
+            right: AppSize.size20,
+            left: AppSize.size20,
+            bottom: AppSize.size20,
+          ),
+          itemCount: myRidesController.rideHistory.length,
+          itemBuilder: (context, index) {
+            final ride = myRidesController.rideHistory[index];
+            return _buildRideCard(ride);
+          },
+        ),
+      );
+    });
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _customRidesStatus(
-            () {
-              Get.to(() => MyRidesActiveDetailsScreen());
-            },
-            AppIcons.rikshaw2Icon,
-            AppStrings.today1038AM,
-            AppStrings.autoCRM,
-            AppStrings.mapleAvenue2,
-            AppStrings.meadowCountry2,
-            AppStrings.active,
-            AppColors.primaryColor,
-            AppIcons.man1Icon,
-          ),
-          _customRidesStatus(
-            () {
-              Get.to(() => MyRidesCancelledDetailsScreen());
-            },
-            AppIcons.bike2Icon,
-            AppStrings.thursdayNov7,
-            AppStrings.bikeCRM,
-            AppStrings.pineStreet,
-            AppStrings.sereneValley,
-            AppStrings.cancelled,
-            AppColors.redColor,
-            AppIcons.man2Icon,
-          ),
-          _customRidesStatus(
-            () {
-              Get.to(() => MyRidesCompletedDetailsScreen());
-            },
+          Image.asset(
             AppIcons.carModelIcon,
-            AppStrings.sunday6,
-            AppStrings.carCRM,
-            AppStrings.willow777,
-            AppStrings.meadowCountry2,
-            AppStrings.completed,
-            AppColors.parrotColor,
-            AppIcons.man3Icon,
+            width: AppSize.size80,
+            color: AppColors.smallTextColor.withOpacity(0.5),
+          ),
+          const SizedBox(height: AppSize.size20),
+          const Text(
+            'No Rides Yet',
+            style: TextStyle(
+              fontSize: AppSize.size18,
+              fontFamily: FontFamily.latoBold,
+              fontWeight: FontWeight.w700,
+              color: AppColors.blackTextColor,
+            ),
+          ),
+          const SizedBox(height: AppSize.size8),
+          const Text(
+            'Your ride history will appear here',
+            style: TextStyle(
+              fontSize: AppSize.size14,
+              fontFamily: FontFamily.latoRegular,
+              fontWeight: FontWeight.w400,
+              color: AppColors.smallTextColor,
+            ),
+          ),
+          const SizedBox(height: AppSize.size24),
+          GestureDetector(
+            onTap: _loadRideHistory,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSize.size24,
+                vertical: AppSize.size12,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor,
+                borderRadius: BorderRadius.circular(AppSize.size10),
+              ),
+              child: const Text(
+                'Refresh',
+                style: TextStyle(
+                  fontSize: AppSize.size14,
+                  fontFamily: FontFamily.latoMedium,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.backGroundColor,
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  _customRidesStatus(
-      Function()? onTap,
-      String rideImage,
-      String dateText,
-      String crmText,
-      String address1,
-      String address2,
-      String rideStatus,
-      Color statusColor,
-      String riderImage) {
+  Widget _buildRideCard(RideModel ride) {
+    final statusColor = _getStatusColor(ride);
+    final statusText = _getStatusText(ride);
+    final vehicleIcon = _getVehicleIcon(ride.driver?.vehicleType);
+    final dateText = _formatDate(ride.createdAt);
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => _navigateToDetails(ride),
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSize.size24),
         padding: const EdgeInsets.only(
@@ -202,167 +314,173 @@ class MyRidesScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Obx(
-                      () => Padding(
-                        padding: EdgeInsets.only(
-                            right: languageController.arb.value
-                                ? 0
-                                : AppSize.size8,
-                            left: languageController.arb.value
-                                ? AppSize.size8
-                                : AppSize.size0),
-                        child: Image.asset(
-                          rideImage,
-                          width: AppSize.size24,
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Obx(
+                        () => Padding(
+                          padding: EdgeInsets.only(
+                              right: languageController.arb.value
+                                  ? 0
+                                  : AppSize.size8,
+                              left: languageController.arb.value
+                                  ? AppSize.size8
+                                  : AppSize.size0),
+                          child: Image.asset(
+                            vehicleIcon,
+                            width: AppSize.size24,
+                          ),
                         ),
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: AppSize.size6),
-                          child: Text(
-                            dateText,
-                            style: const TextStyle(
-                              fontSize: AppSize.size16,
-                              fontFamily: FontFamily.latoBold,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.blackTextColor,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(bottom: AppSize.size6),
+                              child: Text(
+                                dateText,
+                                style: const TextStyle(
+                                  fontSize: AppSize.size16,
+                                  fontFamily: FontFamily.latoBold,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.blackTextColor,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        Text(
-                          crmText,
-                          style: const TextStyle(
-                            fontSize: AppSize.size12,
-                            fontFamily: FontFamily.latoRegular,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.smallTextColor,
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(top: AppSize.size16),
-                          child: Row(
-                            children: [
-                              Obx(
-                                () => Container(
-                                  width: AppSize.size10,
-                                  height: AppSize.size10,
-                                  margin: EdgeInsets.only(
-                                      right: languageController.arb.value
-                                          ? 0
-                                          : AppSize.size6,
-                                      left: languageController.arb.value
-                                          ? AppSize.size6
-                                          : AppSize.size0),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.greenColor,
+                            Text(
+                              'Ride #${ride.id} • \$${ride.finalAmount.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: AppSize.size12,
+                                fontFamily: FontFamily.latoRegular,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.smallTextColor,
+                              ),
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(top: AppSize.size16),
+                              child: Row(
+                                children: [
+                                  Obx(
+                                    () => Container(
+                                      width: AppSize.size10,
+                                      height: AppSize.size10,
+                                      margin: EdgeInsets.only(
+                                          right: languageController.arb.value
+                                              ? 0
+                                              : AppSize.size6,
+                                          left: languageController.arb.value
+                                              ? AppSize.size6
+                                              : AppSize.size0),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.greenColor,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Container(
+                                          width: AppSize.size6,
+                                          height: AppSize.size6,
+                                          decoration: const BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: AppColors.greenColor,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  child: Center(
-                                    child: Container(
-                                      width: AppSize.size6,
-                                      height: AppSize.size6,
-                                      decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: AppColors.greenColor,
+                                  Expanded(
+                                    child: Text(
+                                      ride.pickupAddress,
+                                      style: const TextStyle(
+                                        fontSize: AppSize.size12,
+                                        fontFamily: FontFamily.latoRegular,
+                                        fontWeight: FontWeight.w400,
+                                        color: AppColors.blackTextColor,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Obx(
+                              () => Container(
+                                margin: EdgeInsets.only(
+                                    right: languageController.arb.value
+                                        ? AppSize.size4
+                                        : 0,
+                                    left: languageController.arb.value
+                                        ? AppSize.size0
+                                        : AppSize.size4),
+                                height: AppSize.size12,
+                                width: AppSize.size1,
+                                color: AppColors.smallTextColor,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Obx(
+                                  () => Container(
+                                    width: AppSize.size10,
+                                    height: AppSize.size10,
+                                    margin: EdgeInsets.only(
+                                      left: languageController.arb.value
+                                          ? AppSize.size6
+                                          : 0,
+                                      right: languageController.arb.value
+                                          ? AppSize.size0
+                                          : AppSize.size6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: AppColors.redColor,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Container(
+                                        width: AppSize.size6,
+                                        height: AppSize.size6,
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: AppColors.redColor,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              SizedBox(
-                                width: AppSize.size173,
-                                child: Text(
-                                  address1,
-                                  style: const TextStyle(
-                                    fontSize: AppSize.size12,
-                                    fontFamily: FontFamily.latoRegular,
-                                    fontWeight: FontWeight.w400,
-                                    color: AppColors.blackTextColor,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Obx(
-                          () => Container(
-                            margin: EdgeInsets.only(
-                                right: languageController.arb.value
-                                    ? AppSize.size4
-                                    : 0,
-                                left: languageController.arb.value
-                                    ? AppSize.size0
-                                    : AppSize.size4),
-                            height: AppSize.size12,
-                            width: AppSize.size1,
-                            color: AppColors.smallTextColor,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Obx(
-                              () => Container(
-                                width: AppSize.size10,
-                                height: AppSize.size10,
-                                margin: EdgeInsets.only(
-                                  left: languageController.arb.value
-                                      ? AppSize.size6
-                                      : 0,
-                                  right: languageController.arb.value
-                                      ? AppSize.size0
-                                      : AppSize.size6,
-                                ),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppColors.redColor,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Container(
-                                    width: AppSize.size6,
-                                    height: AppSize.size6,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: AppColors.redColor,
+                                Expanded(
+                                  child: Text(
+                                    ride.dropoffAddress,
+                                    style: const TextStyle(
+                                      fontSize: AppSize.size12,
+                                      fontFamily: FontFamily.latoRegular,
+                                      fontWeight: FontWeight.w400,
+                                      color: AppColors.blackTextColor,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                    maxLines: 1,
                                   ),
                                 ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: AppSize.size173,
-                              child: Text(
-                                address2,
-                                style: const TextStyle(
-                                  fontSize: AppSize.size12,
-                                  fontFamily: FontFamily.latoRegular,
-                                  fontWeight: FontWeight.w400,
-                                  color: AppColors.blackTextColor,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      rideStatus,
+                      statusText,
                       style: TextStyle(
                         fontSize: AppSize.size12,
                         fontFamily: FontFamily.latoMedium,
@@ -370,13 +488,14 @@ class MyRidesScreen extends StatelessWidget {
                         color: statusColor,
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: AppSize.size38),
-                      child: Image.asset(
-                        riderImage,
-                        width: AppSize.size28,
+                    if (ride.driver != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSize.size38),
+                        child: Image.asset(
+                          AppIcons.man3Icon,
+                          width: AppSize.size28,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],
@@ -387,7 +506,7 @@ class MyRidesScreen extends StatelessWidget {
     );
   }
 
-  _searchTextField() {
+  Widget _searchTextField() {
     return const TextField(
       autofocus: true,
       cursorColor: AppColors.smallTextColor,

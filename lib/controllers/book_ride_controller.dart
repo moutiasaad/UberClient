@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:prime_taxi_flutter_ui_kit/config/app_icons.dart';
 import 'package:prime_taxi_flutter_ui_kit/controllers/home_controller.dart';
+import 'package:prime_taxi_flutter_ui_kit/view/home/home_screen.dart';
 import '../config/app_strings.dart';
 import '../api/services/ride_service.dart';
 import '../api/client/api_client.dart';
@@ -48,12 +49,30 @@ class BookRideController extends GetxController {
   // Selected payment method
   RxString selectedPaymentMethod = 'cash'.obs;
 
+  // Selected time for ride
+  Rx<DateTime?> selectedTime = Rx<DateTime?>(null);
+
   void selectInnerContainer(int index) {
     selectedInnerContainerIndex.value = index;
   }
 
   void selectFullScreenContainer(int index) {
     selectedFullScreenRideContainerIndex.value = index;
+  }
+
+  // Set selected time
+  void setSelectedTime(DateTime time) {
+    selectedTime.value = time;
+  }
+
+  // Format selected time for display
+  String get formattedSelectedTime {
+    if (selectedTime.value == null) return 'Select Time';
+    final time = selectedTime.value!;
+    final hour = time.hour > 12 ? time.hour - 12 : (time.hour == 0 ? 12 : time.hour);
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $period';
   }
 
   List<String> ridesImage = [
@@ -158,6 +177,7 @@ class BookRideController extends GetxController {
         couponCode: promoCodeController.text.trim().isNotEmpty
             ? promoCodeController.text.trim()
             : null,
+        scheduledTime: selectedTime.value,
       );
 
       currentRide.value = ride;
@@ -165,7 +185,7 @@ class BookRideController extends GetxController {
       Fluttertoast.showToast(msg: 'Ride requested successfully!');
 
       // Navigate to searching driver screen
-      Get.toNamed('/book-car', arguments: {'ride': ride});
+      Get.offAll(() => HomeScreen());
 
     } catch (e) {
       String errorMessage = 'Failed to book ride';

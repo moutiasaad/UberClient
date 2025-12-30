@@ -8,11 +8,13 @@ import 'package:prime_taxi_flutter_ui_kit/config/app_colors.dart';
 import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
 import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
 import 'package:prime_taxi_flutter_ui_kit/config/font_family.dart';
+import 'package:prime_taxi_flutter_ui_kit/controllers/book_ride_controller.dart';
 import 'package:prime_taxi_flutter_ui_kit/controllers/schedule_a_ride_controller.dart';
 
 scheduleARideBottomSheet(BuildContext context) {
   ScheduleARideController scheduleARideController =
       Get.put(ScheduleARideController());
+  BookRideController bookRideController = Get.find<BookRideController>();
   return showModalBottomSheet(
     backgroundColor: Colors.transparent,
     constraints: const BoxConstraints(
@@ -430,6 +432,30 @@ scheduleARideBottomSheet(BuildContext context) {
               child: Center(
                 child: GestureDetector(
                   onTap: () {
+                    // Calculate selected DateTime
+                    DateTime currentDate = DateTime.now();
+                    DateTime selectedDate = currentDate.add(
+                      Duration(days: scheduleARideController.currentDatePage.value),
+                    );
+                    int hour = scheduleARideController.currentHoursPage.value + 1;
+                    int minutes = scheduleARideController.currentMinutesPage.value * 15;
+                    bool isPM = scheduleARideController.currentPage.value == 1;
+
+                    if (isPM && hour != 12) {
+                      hour += 12;
+                    } else if (!isPM && hour == 12) {
+                      hour = 0;
+                    }
+
+                    DateTime selectedDateTime = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      hour,
+                      minutes,
+                    );
+
+                    bookRideController.setSelectedTime(selectedDateTime);
                     Get.back();
                   },
                   child: Container(

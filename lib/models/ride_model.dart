@@ -2,7 +2,7 @@ import 'driver_model.dart';
 
 class RideModel {
   final int id;
-  final int customerId;
+  final int? customerId;
   final int? driverId;
   final double pickupLat;
   final double pickupLng;
@@ -10,35 +10,35 @@ class RideModel {
   final double dropoffLat;
   final double dropoffLng;
   final String dropoffAddress;
+  final double? distanceKm;
+  final int? estimatedDurationMinutes;
+  final int? actualDurationMinutes;
   final String status;
+  final String? statusText;
+  final String? statusColor;
   final String paymentMethod;
+  final String? paymentStatus;
   final double baseFare;
   final double distanceFare;
-  final double? discountAmount;
-  final double? pointsDiscount;
   final double totalFare;
-  final double? distance;
-  final int? duration;
-  final String? couponCode;
+  final double? discountAmount;
+  final double finalAmount;
   final int? pointsUsed;
-  final int? pointsEarned;
-  final double? customerRating;
-  final String? customerComment;
-  final String? cancellationReason;
+  final double? pointsDiscount;
+  final bool isCancellable;
   final String? cancelledBy;
-  final DateTime? scheduledAt;
+  final String? cancellationReason;
+  final DateTime? createdAt;
   final DateTime? acceptedAt;
-  final DateTime? arrivedAt;
+  final DateTime? driverArrivedAt;
   final DateTime? startedAt;
   final DateTime? completedAt;
   final DateTime? cancelledAt;
-  final DateTime createdAt;
-  final DateTime updatedAt;
   final DriverModel? driver;
 
   RideModel({
     required this.id,
-    required this.customerId,
+    this.customerId,
     this.driverId,
     required this.pickupLat,
     required this.pickupLng,
@@ -46,88 +46,147 @@ class RideModel {
     required this.dropoffLat,
     required this.dropoffLng,
     required this.dropoffAddress,
+    this.distanceKm,
+    this.estimatedDurationMinutes,
+    this.actualDurationMinutes,
     required this.status,
+    this.statusText,
+    this.statusColor,
     required this.paymentMethod,
+    this.paymentStatus,
     required this.baseFare,
     required this.distanceFare,
-    this.discountAmount,
-    this.pointsDiscount,
     required this.totalFare,
-    this.distance,
-    this.duration,
-    this.couponCode,
+    this.discountAmount,
+    required this.finalAmount,
     this.pointsUsed,
-    this.pointsEarned,
-    this.customerRating,
-    this.customerComment,
-    this.cancellationReason,
+    this.pointsDiscount,
+    this.isCancellable = true,
     this.cancelledBy,
-    this.scheduledAt,
+    this.cancellationReason,
+    this.createdAt,
     this.acceptedAt,
-    this.arrivedAt,
+    this.driverArrivedAt,
     this.startedAt,
     this.completedAt,
     this.cancelledAt,
-    required this.createdAt,
-    required this.updatedAt,
     this.driver,
   });
 
   factory RideModel.fromJson(Map<String, dynamic> json) {
+    // Handle nested pickup object
+    final pickup = json['pickup'] as Map<String, dynamic>?;
+    final dropoff = json['dropoff'] as Map<String, dynamic>?;
+    final fare = json['fare'] as Map<String, dynamic>?;
+    final timestamps = json['timestamps'] as Map<String, dynamic>?;
+
     return RideModel(
       id: json['id'] ?? 0,
-      customerId: json['customer_id'] ?? 0,
+      customerId: json['customer_id'],
       driverId: json['driver_id'],
-      pickupLat: (json['pickup_lat'] ?? 0).toDouble(),
-      pickupLng: (json['pickup_lng'] ?? 0).toDouble(),
-      pickupAddress: json['pickup_address'] ?? '',
-      dropoffLat: (json['dropoff_lat'] ?? 0).toDouble(),
-      dropoffLng: (json['dropoff_lng'] ?? 0).toDouble(),
-      dropoffAddress: json['dropoff_address'] ?? '',
+      // Pickup - handle both nested and flat structure
+      pickupLat: pickup != null
+          ? (pickup['latitude'] ?? 0).toDouble()
+          : (json['pickup_lat'] ?? 0).toDouble(),
+      pickupLng: pickup != null
+          ? (pickup['longitude'] ?? 0).toDouble()
+          : (json['pickup_lng'] ?? 0).toDouble(),
+      pickupAddress: pickup != null
+          ? (pickup['address'] ?? '')
+          : (json['pickup_address'] ?? ''),
+      // Dropoff - handle both nested and flat structure
+      dropoffLat: dropoff != null
+          ? (dropoff['latitude'] ?? 0).toDouble()
+          : (json['dropoff_lat'] ?? 0).toDouble(),
+      dropoffLng: dropoff != null
+          ? (dropoff['longitude'] ?? 0).toDouble()
+          : (json['dropoff_lng'] ?? 0).toDouble(),
+      dropoffAddress: dropoff != null
+          ? (dropoff['address'] ?? '')
+          : (json['dropoff_address'] ?? ''),
+      // Distance and duration
+      distanceKm: json['distance_km'] != null
+          ? (json['distance_km']).toDouble()
+          : null,
+      estimatedDurationMinutes: json['estimated_duration_minutes'],
+      actualDurationMinutes: json['actual_duration_minutes'],
+      // Status
       status: json['status'] ?? 'pending',
+      statusText: json['status_text'],
+      statusColor: json['status_color'],
+      // Payment
       paymentMethod: json['payment_method'] ?? 'cash',
-      baseFare: (json['base_fare'] ?? 0).toDouble(),
-      distanceFare: (json['distance_fare'] ?? 0).toDouble(),
-      discountAmount: json['discount_amount'] != null
-          ? (json['discount_amount']).toDouble()
-          : null,
-      pointsDiscount: json['points_discount'] != null
-          ? (json['points_discount']).toDouble()
-          : null,
-      totalFare: (json['total_fare'] ?? 0).toDouble(),
-      distance: json['distance'] != null ? (json['distance']).toDouble() : null,
-      duration: json['duration'],
-      couponCode: json['coupon_code'],
-      pointsUsed: json['points_used'],
-      pointsEarned: json['points_earned'],
-      customerRating: json['customer_rating'] != null
-          ? (json['customer_rating']).toDouble()
-          : null,
-      customerComment: json['customer_comment'],
-      cancellationReason: json['cancellation_reason'],
+      paymentStatus: json['payment_status'],
+      // Fare - handle both nested and flat structure
+      baseFare: fare != null
+          ? (fare['base_fare'] ?? 0).toDouble()
+          : (json['base_fare'] ?? 0).toDouble(),
+      distanceFare: fare != null
+          ? (fare['distance_fare'] ?? 0).toDouble()
+          : (json['distance_fare'] ?? 0).toDouble(),
+      totalFare: fare != null
+          ? (fare['total_fare'] ?? 0).toDouble()
+          : (json['total_fare'] ?? 0).toDouble(),
+      discountAmount: fare != null
+          ? (fare['discount_amount'] ?? 0).toDouble()
+          : (json['discount_amount'] ?? 0).toDouble(),
+      finalAmount: fare != null
+          ? (fare['final_amount'] ?? fare['total_fare'] ?? 0).toDouble()
+          : (json['final_amount'] ?? json['total_fare'] ?? 0).toDouble(),
+      pointsUsed: fare != null
+          ? fare['points_used']
+          : json['points_used'],
+      pointsDiscount: fare != null
+          ? (fare['points_discount'] ?? 0).toDouble()
+          : (json['points_discount'] ?? 0).toDouble(),
+      // Cancellation
+      isCancellable: json['is_cancellable'] ?? true,
       cancelledBy: json['cancelled_by'],
-      scheduledAt: json['scheduled_at'] != null
-          ? DateTime.parse(json['scheduled_at'])
-          : null,
-      acceptedAt: json['accepted_at'] != null
-          ? DateTime.parse(json['accepted_at'])
-          : null,
-      arrivedAt:
-          json['arrived_at'] != null ? DateTime.parse(json['arrived_at']) : null,
-      startedAt:
-          json['started_at'] != null ? DateTime.parse(json['started_at']) : null,
-      completedAt: json['completed_at'] != null
-          ? DateTime.parse(json['completed_at'])
-          : null,
-      cancelledAt: json['cancelled_at'] != null
-          ? DateTime.parse(json['cancelled_at'])
-          : null,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : DateTime.now(),
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : DateTime.now(),
+      cancellationReason: json['cancellation_reason'],
+      // Timestamps - handle both nested and flat structure
+      createdAt: timestamps != null
+          ? (timestamps['created_at'] != null
+              ? DateTime.parse(timestamps['created_at'])
+              : null)
+          : (json['created_at'] != null
+              ? DateTime.parse(json['created_at'])
+              : null),
+      acceptedAt: timestamps != null
+          ? (timestamps['accepted_at'] != null
+              ? DateTime.parse(timestamps['accepted_at'])
+              : null)
+          : (json['accepted_at'] != null
+              ? DateTime.parse(json['accepted_at'])
+              : null),
+      driverArrivedAt: timestamps != null
+          ? (timestamps['driver_arrived_at'] != null
+              ? DateTime.parse(timestamps['driver_arrived_at'])
+              : null)
+          : (json['driver_arrived_at'] != null
+              ? DateTime.parse(json['driver_arrived_at'])
+              : null),
+      startedAt: timestamps != null
+          ? (timestamps['started_at'] != null
+              ? DateTime.parse(timestamps['started_at'])
+              : null)
+          : (json['started_at'] != null
+              ? DateTime.parse(json['started_at'])
+              : null),
+      completedAt: timestamps != null
+          ? (timestamps['completed_at'] != null
+              ? DateTime.parse(timestamps['completed_at'])
+              : null)
+          : (json['completed_at'] != null
+              ? DateTime.parse(json['completed_at'])
+              : null),
+      cancelledAt: timestamps != null
+          ? (timestamps['cancelled_at'] != null
+              ? DateTime.parse(timestamps['cancelled_at'])
+              : null)
+          : (json['cancelled_at'] != null
+              ? DateTime.parse(json['cancelled_at'])
+              : null),
+      // Driver
       driver: json['driver'] != null ? DriverModel.fromJson(json['driver']) : null,
     );
   }
@@ -137,36 +196,44 @@ class RideModel {
       'id': id,
       'customer_id': customerId,
       'driver_id': driverId,
-      'pickup_lat': pickupLat,
-      'pickup_lng': pickupLng,
-      'pickup_address': pickupAddress,
-      'dropoff_lat': dropoffLat,
-      'dropoff_lng': dropoffLng,
-      'dropoff_address': dropoffAddress,
-      'status': status,
+      'pickup': {
+        'latitude': pickupLat,
+        'longitude': pickupLng,
+        'address': pickupAddress,
+      },
+      'dropoff': {
+        'latitude': dropoffLat,
+        'longitude': dropoffLng,
+        'address': dropoffAddress,
+      },
+      'distance_km': distanceKm,
+      'estimated_duration_minutes': estimatedDurationMinutes,
+      'actual_duration_minutes': actualDurationMinutes,
+      'fare': {
+        'base_fare': baseFare,
+        'distance_fare': distanceFare,
+        'total_fare': totalFare,
+        'discount_amount': discountAmount,
+        'final_amount': finalAmount,
+        'points_used': pointsUsed,
+        'points_discount': pointsDiscount,
+      },
       'payment_method': paymentMethod,
-      'base_fare': baseFare,
-      'distance_fare': distanceFare,
-      'discount_amount': discountAmount,
-      'points_discount': pointsDiscount,
-      'total_fare': totalFare,
-      'distance': distance,
-      'duration': duration,
-      'coupon_code': couponCode,
-      'points_used': pointsUsed,
-      'points_earned': pointsEarned,
-      'customer_rating': customerRating,
-      'customer_comment': customerComment,
-      'cancellation_reason': cancellationReason,
+      'payment_status': paymentStatus,
+      'status': status,
+      'status_text': statusText,
+      'status_color': statusColor,
+      'is_cancellable': isCancellable,
       'cancelled_by': cancelledBy,
-      'scheduled_at': scheduledAt?.toIso8601String(),
-      'accepted_at': acceptedAt?.toIso8601String(),
-      'arrived_at': arrivedAt?.toIso8601String(),
-      'started_at': startedAt?.toIso8601String(),
-      'completed_at': completedAt?.toIso8601String(),
-      'cancelled_at': cancelledAt?.toIso8601String(),
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'cancellation_reason': cancellationReason,
+      'timestamps': {
+        'created_at': createdAt?.toIso8601String(),
+        'accepted_at': acceptedAt?.toIso8601String(),
+        'driver_arrived_at': driverArrivedAt?.toIso8601String(),
+        'started_at': startedAt?.toIso8601String(),
+        'completed_at': completedAt?.toIso8601String(),
+        'cancelled_at': cancelledAt?.toIso8601String(),
+      },
       'driver': driver?.toJson(),
     };
   }
@@ -174,8 +241,8 @@ class RideModel {
   // Helper methods for status checking
   bool get isPending => status == 'pending';
   bool get isAccepted => status == 'accepted';
-  bool get isArrived => status == 'arrived';
-  bool get isStarted => status == 'started';
+  bool get isArrived => status == 'arrived' || status == 'driver_arrived';
+  bool get isStarted => status == 'started' || status == 'in_progress';
   bool get isCompleted => status == 'completed';
   bool get isCancelled => status == 'cancelled';
   bool get isActive => isPending || isAccepted || isArrived || isStarted;

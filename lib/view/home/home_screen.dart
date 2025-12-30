@@ -13,9 +13,13 @@ import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
 import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
 import 'package:prime_taxi_flutter_ui_kit/config/font_family.dart';
 import 'package:prime_taxi_flutter_ui_kit/controllers/home_controller.dart';
+import 'package:prime_taxi_flutter_ui_kit/models/ride_model.dart';
 import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
 import 'package:prime_taxi_flutter_ui_kit/view/destination/destination_screen.dart';
+import 'package:prime_taxi_flutter_ui_kit/view/destination/select_route_screen.dart';
+import 'package:prime_taxi_flutter_ui_kit/view/destination/select_route_with_map.dart';
 import 'package:prime_taxi_flutter_ui_kit/view/my_rides/my_rides_screen.dart';
+import 'package:prime_taxi_flutter_ui_kit/view/my_rides/my_rides_active_details_screen.dart';
 import 'package:prime_taxi_flutter_ui_kit/view/payments/payments_screen.dart';
 import 'package:prime_taxi_flutter_ui_kit/view/profile/profile_screen.dart';
 import 'package:prime_taxi_flutter_ui_kit/view/safety/safety_screen.dart';
@@ -28,7 +32,8 @@ import '../../common_widgets/common_text_feild.dart';
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
 
-  final HomeController homeController = Get.put(HomeController());
+  final HomeController homeController = Get.find<HomeController>();
+
   final LanguageController languageController = Get.put(LanguageController());
 
   @override
@@ -361,10 +366,7 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              GestureDetector(
-                // onVerticalDragUpdate: (details) {
-                //   homeController.updateHeight(details.primaryDelta!);
-                // },
+            GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: AppSize.time200),
@@ -394,404 +396,258 @@ class HomeScreen extends StatelessWidget {
                         AppIcons.bottomSheetIcon,
                         width: AppSize.size40,
                       ),
-                      Obx(
-                        () => languageController.arb.value
-                            ? Container(
-                                height: AppSize.size82,
-                                margin: const EdgeInsets.only(
-                                  top: AppSize.size24,
-                                ),
-                                padding: EdgeInsets.only(
-                                    left: languageController.arb.value
-                                        ? 0
-                                        : AppSize.size15,
-                                    right: languageController.arb.value
-                                        ? AppSize.size15
-                                        : 0),
-                                decoration: BoxDecoration(
-                                  color: AppColors.backGroundColor,
-                                  border: Border.all(
-                                    color: AppColors.smallTextColor
-                                        .withOpacity(AppSize.opacity10),
-                                  ),
-                                  borderRadius:
-                                      BorderRadius.circular(AppSize.size10),
-                                ),
-                                child: GridView.builder(
-                                  shrinkWrap: true,
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: AppSize.four,
-                                    mainAxisExtent: AppSize.size64,
-                                    crossAxisSpacing: AppSize.size15,
-                                  ),
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.only(
-                                    top: AppSize.size15,
-                                  ),
-                                  itemCount:
-                                      homeController.serviceString.length,
-                                  itemBuilder: (context, index) {
-                                    return GestureDetector(
-                                      onTap: () {
-                                        homeController.setServiceIndex(index);
-                                      },
-                                      child: Obx(() => SizedBox(
-                                            width: AppSize.size30,
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Image.asset(
-                                                      homeController
-                                                          .serviceIcon[index],
-                                                      width: AppSize.size30,
-                                                    ),
-                                                    Text(
-                                                      homeController
-                                                          .serviceString[index],
-                                                      style: TextStyle(
-                                                        fontSize:
-                                                            AppSize.size12,
-                                                        fontFamily: FontFamily
-                                                            .latoRegular,
-                                                        fontWeight:
-                                                            FontWeight.w400,
-                                                        color: homeController
-                                                                    .selectedServiceIndex
-                                                                    .value ==
-                                                                index
-                                                            ? AppColors
-                                                                .blackTextColor
-                                                            : AppColors
-                                                                .smallTextColor,
-                                                      ),
-                                                    ),
-                                                    if (homeController
-                                                            .selectedServiceIndex
-                                                            .value ==
-                                                        index) ...[
-                                                      Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .only(
-                                                          top: AppSize.size5,
-                                                        ),
-                                                        child: Image.asset(
-                                                          AppIcons
-                                                              .selectLineIcon,
-                                                          width: AppSize.size30,
-                                                        ),
-                                                      ),
-                                                    ] else
-                                                      Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .only(
-                                                          top: AppSize.size5,
-                                                        ),
-                                                        child: Image.asset(
-                                                          AppIcons
-                                                              .selectLineIcon,
-                                                          width: AppSize.size30,
-                                                          color: AppColors
-                                                              .backGroundColor,
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          )),
-                                    );
-                                  },
-                                ),
-                              )
-                            : Container(
-                                height: AppSize.size82,
-                                margin: const EdgeInsets.only(
-                                  top: AppSize.size24,
-                                ),
-                                padding: EdgeInsets.only(
-                                    left: languageController.arb.value
-                                        ? 0
-                                        : AppSize.size15,
-                                    right: languageController.arb.value
-                                        ? AppSize.size15
-                                        : 0),
-                                decoration: BoxDecoration(
-                                  color: AppColors.backGroundColor,
-                                  border: Border.all(
-                                    color: AppColors.smallTextColor
-                                        .withOpacity(AppSize.opacity10),
-                                  ),
-                                  borderRadius:
-                                      BorderRadius.circular(AppSize.size10),
-                                ),
-                                child: GridView.builder(
-                                  shrinkWrap: true,
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: AppSize.four,
-                                    mainAxisExtent: AppSize.size64,
-                                    crossAxisSpacing: AppSize.size15,
-                                  ),
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.only(
-                                    top: AppSize.size15,
-                                  ),
-                                  itemCount:
-                                      homeController.serviceString.length,
-                                  itemBuilder: (context, index) {
-                                    return GestureDetector(
-                                      onTap: () {
-                                        homeController.setServiceIndex(index);
-                                      },
-                                      child: Obx(() => SizedBox(
-                                            width: AppSize.size30,
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Image.asset(
-                                                      homeController
-                                                          .serviceIcon[index],
-                                                      width: AppSize.size30,
-                                                    ),
-                                                    Text(
-                                                      homeController
-                                                          .serviceString[index],
-                                                      style: TextStyle(
-                                                        fontSize:
-                                                            AppSize.size12,
-                                                        fontFamily: FontFamily
-                                                            .latoRegular,
-                                                        fontWeight:
-                                                            FontWeight.w400,
-                                                        color: homeController
-                                                                    .selectedServiceIndex
-                                                                    .value ==
-                                                                index
-                                                            ? AppColors
-                                                                .blackTextColor
-                                                            : AppColors
-                                                                .smallTextColor,
-                                                      ),
-                                                    ),
-                                                    if (homeController
-                                                            .selectedServiceIndex
-                                                            .value ==
-                                                        index) ...[
-                                                      Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .only(
-                                                          top: AppSize.size5,
-                                                        ),
-                                                        child: Image.asset(
-                                                          AppIcons
-                                                              .selectLineIcon,
-                                                          width: AppSize.size30,
-                                                        ),
-                                                      ),
-                                                    ] else
-                                                      Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .only(
-                                                          top: AppSize.size5,
-                                                        ),
-                                                        child: Image.asset(
-                                                          AppIcons
-                                                              .selectLineIcon,
-                                                          width: AppSize.size30,
-                                                          color: AppColors
-                                                              .backGroundColor,
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          )),
-                                    );
-                                  },
-                                ),
-                              ),
-                      ),
-                      Container(
-                        height: AppSize.size173,
-                        margin: const EdgeInsets.only(
-                          top: AppSize.size16,
-                        ),
-                        padding: const EdgeInsets.only(
-                          left: AppSize.size15,
-                          right: AppSize.size15,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.backGroundColor,
-                          border: Border.all(
-                            color: AppColors.smallTextColor
-                                .withOpacity(AppSize.opacity10),
-                          ),
-                          borderRadius: BorderRadius.circular(AppSize.size10),
-                        ),
-                        child: GestureDetector(
-                          onTap: () {
-                            Get.to(() => DestinationScreen());
-                          },
-                          child: Column(
-                            children: [
-                              SizedBox(
-                                height: AppSize.size42,
-                                child: TextField(
-                                  decoration: InputDecoration(
-                                    hintText: AppStrings.searchDestination,
-                                    hintStyle: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: FontFamily.latoSemiBold,
-                                      color: AppColors.blackTextColor,
-                                      fontSize: AppSize.size14,
-                                    ),
-                                    border: UnderlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: AppColors.smallTextColor
-                                            .withOpacity(AppSize.opacity20),
-                                        width: AppSize.size1,
-                                      ),
-                                    ),
-                                    focusedBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: AppColors.smallTextColor
-                                            .withOpacity(AppSize.opacity20),
-                                        width: AppSize.size1,
-                                      ),
-                                    ),
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: AppColors.smallTextColor
-                                            .withOpacity(AppSize.opacity20),
-                                        width: AppSize.size1,
-                                      ),
-                                    ),
-                                    prefixIcon: Obx(
-                                      () => Padding(
-                                        padding: EdgeInsets.only(
-                                          right: languageController.arb.value
-                                              ? 0
-                                              : AppSize.size8,
-                                          left: languageController.arb.value
-                                              ? AppSize.size8
-                                              : 0,
-                                          top: AppSize.size5,
-                                        ),
-                                        child: Image.asset(
-                                          AppIcons.search,
-                                        ),
-                                      ),
-                                    ),
-                                    prefixIconConstraints: const BoxConstraints(
-                                      maxWidth: AppSize.size22,
-                                    ),
-                                  ),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: FontFamily.latoSemiBold,
-                                    color: AppColors.blackTextColor,
-                                    fontSize: AppSize.size14,
-                                  ),
-                                  cursorColor: AppColors.blackTextColor,
-                                  readOnly: true,
-                                  onTap: () {
-                                    Get.to(() => DestinationScreen());
-                                  },
-                                ),
-                              ),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: AppSize.size12,
-                                    bottom: AppSize.size12,
-                                  ),
-                                  child: ListView.separated(
-                                    padding: EdgeInsets.zero,
-                                    shrinkWrap: true,
-                                    physics: const BouncingScrollPhysics(),
-                                    itemBuilder: (context, index) {
-                                      return Row(
-                                        children: [
-                                          Obx(
-                                            () => Padding(
-                                              padding: EdgeInsets.only(
-                                                  right: languageController
-                                                          .arb.value
-                                                      ? 0
-                                                      : AppSize.size6,
-                                                  left: languageController
-                                                          .arb.value
-                                                      ? AppSize.size6
-                                                      : AppSize.size0),
-                                              child: Image.asset(
-                                                AppIcons.mapIcon,
-                                                color: AppColors.smallTextColor,
-                                                width: AppSize.size14,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: Text(
-                                              homeController
-                                                  .locationString[index],
-                                              maxLines: AppSize.one,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w400,
-                                                fontSize: AppSize.size12,
-                                                fontFamily:
-                                                    FontFamily.latoRegular,
-                                                color: AppColors.blackTextColor,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                    separatorBuilder: (context, index) {
-                                      return Divider(
-                                        color: AppColors.smallTextColor
-                                            .withOpacity(AppSize.opacity10),
-                                        height: AppSize.size25,
-                                      );
-                                    },
-                                    itemCount:
-                                        homeController.locationString.length,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      // Obx(
+                      //   () =>
+                        // languageController.arb.value
+                            // ?
+                        // Container(
+                        //         height: AppSize.size82,
+                        //         margin: const EdgeInsets.only(
+                        //           top: AppSize.size24,
+                        //         ),
+                        //         padding: EdgeInsets.only(
+                        //             left: languageController.arb.value
+                        //                 ? 0
+                        //                 : AppSize.size15,
+                        //             right: languageController.arb.value
+                        //                 ? AppSize.size15
+                        //                 : 0),
+                        //         decoration: BoxDecoration(
+                        //           color: AppColors.backGroundColor,
+                        //           border: Border.all(
+                        //             color: AppColors.smallTextColor
+                        //                 .withOpacity(AppSize.opacity10),
+                        //           ),
+                        //           borderRadius:
+                        //               BorderRadius.circular(AppSize.size10),
+                        //         ),
+                        //         child: GridView.builder(
+                        //           shrinkWrap: true,
+                        //           gridDelegate:
+                        //               const SliverGridDelegateWithFixedCrossAxisCount(
+                        //             crossAxisCount: AppSize.four,
+                        //             mainAxisExtent: AppSize.size64,
+                        //             crossAxisSpacing: AppSize.size15,
+                        //           ),
+                        //           physics: const NeverScrollableScrollPhysics(),
+                        //           padding: const EdgeInsets.only(
+                        //             top: AppSize.size15,
+                        //           ),
+                        //           itemCount:
+                        //               homeController.serviceString.length,
+                        //           itemBuilder: (context, index) {
+                        //             return GestureDetector(
+                        //               onTap: () {
+                        //                 homeController.setServiceIndex(index);
+                        //               },
+                        //               child: Obx(() => SizedBox(
+                        //                     width: AppSize.size30,
+                        //                     child: Row(
+                        //                       mainAxisAlignment:
+                        //                           MainAxisAlignment
+                        //                               .spaceBetween,
+                        //                       children: [
+                        //                         Column(
+                        //                           crossAxisAlignment:
+                        //                               CrossAxisAlignment.center,
+                        //                           mainAxisAlignment:
+                        //                               MainAxisAlignment
+                        //                                   .spaceBetween,
+                        //                           children: [
+                        //                             Image.asset(
+                        //                               homeController
+                        //                                   .serviceIcon[index],
+                        //                               width: AppSize.size30,
+                        //                             ),
+                        //                             Text(
+                        //                               homeController
+                        //                                   .serviceString[index],
+                        //                               style: TextStyle(
+                        //                                 fontSize:
+                        //                                     AppSize.size12,
+                        //                                 fontFamily: FontFamily
+                        //                                     .latoRegular,
+                        //                                 fontWeight:
+                        //                                     FontWeight.w400,
+                        //                                 color: homeController
+                        //                                             .selectedServiceIndex
+                        //                                             .value ==
+                        //                                         index
+                        //                                     ? AppColors
+                        //                                         .blackTextColor
+                        //                                     : AppColors
+                        //                                         .smallTextColor,
+                        //                               ),
+                        //                             ),
+                        //                             if (homeController
+                        //                                     .selectedServiceIndex
+                        //                                     .value ==
+                        //                                 index) ...[
+                        //                               Padding(
+                        //                                 padding:
+                        //                                     const EdgeInsets
+                        //                                         .only(
+                        //                                   top: AppSize.size5,
+                        //                                 ),
+                        //                                 child: Image.asset(
+                        //                                   AppIcons
+                        //                                       .selectLineIcon,
+                        //                                   width: AppSize.size30,
+                        //                                 ),
+                        //                               ),
+                        //                             ] else
+                        //                               Padding(
+                        //                                 padding:
+                        //                                     const EdgeInsets
+                        //                                         .only(
+                        //                                   top: AppSize.size5,
+                        //                                 ),
+                        //                                 child: Image.asset(
+                        //                                   AppIcons
+                        //                                       .selectLineIcon,
+                        //                                   width: AppSize.size30,
+                        //                                   color: AppColors
+                        //                                       .backGroundColor,
+                        //                                 ),
+                        //                               ),
+                        //                           ],
+                        //                         ),
+                        //                       ],
+                        //                     ),
+                        //                   )),
+                        //             );
+                        //           },
+                        //         ),
+                        //       )
+                        //     :
+                        // Container(
+                        //         height: AppSize.size82,
+                        //         margin: const EdgeInsets.only(
+                        //           top: AppSize.size24,
+                        //         ),
+                        //         padding: EdgeInsets.only(
+                        //             left: languageController.arb.value
+                        //                 ? 0
+                        //                 : AppSize.size15,
+                        //             right: languageController.arb.value
+                        //                 ? AppSize.size15
+                        //                 : 0),
+                        //         decoration: BoxDecoration(
+                        //           color: AppColors.backGroundColor,
+                        //           border: Border.all(
+                        //             color: AppColors.smallTextColor
+                        //                 .withOpacity(AppSize.opacity10),
+                        //           ),
+                        //           borderRadius:
+                        //               BorderRadius.circular(AppSize.size10),
+                        //         ),
+                        //         child: GridView.builder(
+                        //           shrinkWrap: true,
+                        //           gridDelegate:
+                        //               const SliverGridDelegateWithFixedCrossAxisCount(
+                        //             crossAxisCount: AppSize.four,
+                        //             mainAxisExtent: AppSize.size64,
+                        //             crossAxisSpacing: AppSize.size15,
+                        //           ),
+                        //           physics: const NeverScrollableScrollPhysics(),
+                        //           padding: const EdgeInsets.only(
+                        //             top: AppSize.size15,
+                        //           ),
+                        //           itemCount:
+                        //               homeController.serviceString.length,
+                        //           itemBuilder: (context, index) {
+                        //             return GestureDetector(
+                        //               onTap: () {
+                        //                 homeController.setServiceIndex(index);
+                        //               },
+                        //               child: Obx(() => SizedBox(
+                        //                     width: AppSize.size30,
+                        //                     child: Row(
+                        //                       mainAxisAlignment:
+                        //                           MainAxisAlignment
+                        //                               .spaceBetween,
+                        //                       children: [
+                        //                         Column(
+                        //                           crossAxisAlignment:
+                        //                               CrossAxisAlignment.center,
+                        //                           mainAxisAlignment:
+                        //                               MainAxisAlignment
+                        //                                   .spaceBetween,
+                        //                           children: [
+                        //                             Image.asset(
+                        //                               homeController
+                        //                                   .serviceIcon[index],
+                        //                               width: AppSize.size30,
+                        //                             ),
+                        //                             Text(
+                        //                               homeController
+                        //                                   .serviceString[index],
+                        //                               style: TextStyle(
+                        //                                 fontSize:
+                        //                                     AppSize.size12,
+                        //                                 fontFamily: FontFamily
+                        //                                     .latoRegular,
+                        //                                 fontWeight:
+                        //                                     FontWeight.w400,
+                        //                                 color: homeController
+                        //                                             .selectedServiceIndex
+                        //                                             .value ==
+                        //                                         index
+                        //                                     ? AppColors
+                        //                                         .blackTextColor
+                        //                                     : AppColors
+                        //                                         .smallTextColor,
+                        //                               ),
+                        //                             ),
+                        //                             if (homeController
+                        //                                     .selectedServiceIndex
+                        //                                     .value ==
+                        //                                 index) ...[
+                        //                               Padding(
+                        //                                 padding:
+                        //                                     const EdgeInsets
+                        //                                         .only(
+                        //                                   top: AppSize.size5,
+                        //                                 ),
+                        //                                 child: Image.asset(
+                        //                                   AppIcons
+                        //                                       .selectLineIcon,
+                        //                                   width: AppSize.size30,
+                        //                                 ),
+                        //                               ),
+                        //                             ] else
+                        //                               Padding(
+                        //                                 padding:
+                        //                                     const EdgeInsets
+                        //                                         .only(
+                        //                                   top: AppSize.size5,
+                        //                                 ),
+                        //                                 child: Image.asset(
+                        //                                   AppIcons
+                        //                                       .selectLineIcon,
+                        //                                   width: AppSize.size30,
+                        //                                   color: AppColors
+                        //                                       .backGroundColor,
+                        //                                 ),
+                        //                               ),
+                        //                           ],
+                        //                         ),
+                        //                       ],
+                        //                     ),
+                        //                   )),
+                        //             );
+                        //           },
+                        //         ),
+                        //       )
+                      // ),
+                      Obx(() => homeController.activeRide.value != null
+                        ? _buildActiveRideCard(homeController.activeRide.value!)
+                        : _buildNoActiveRideCard(),
                       ),
                     ],
                   ),
                 ),
-              ),
+                )
             ],
           ),
         ),
@@ -1011,6 +867,292 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildActiveRideCard(RideModel ride) {
+    // Use status_color from API or fallback to default
+    Color statusColor;
+    switch (ride.statusColor) {
+      case 'warning':
+        statusColor = Colors.orange;
+        break;
+      case 'success':
+        statusColor = AppColors.greenColor;
+        break;
+      case 'danger':
+        statusColor = AppColors.redColor;
+        break;
+      case 'info':
+        statusColor = AppColors.primaryColor;
+        break;
+      default:
+        statusColor = AppColors.primaryColor;
+    }
+
+    // Use status_text from API or fallback
+    String statusText = ride.statusText ?? ride.status.toUpperCase();
+
+    return GestureDetector(
+      onTap: () {
+        Get.to(() => MyRidesActiveDetailsScreen(rideId: ride.id));
+      },
+      child: Container(
+        margin: const EdgeInsets.only(top: AppSize.size16),
+        padding: const EdgeInsets.all(AppSize.size16),
+        decoration: BoxDecoration(
+          color: AppColors.backGroundColor,
+          borderRadius: BorderRadius.circular(AppSize.size10),
+          border: Border.all(
+            color: AppColors.smallTextColor.withOpacity(AppSize.opacity10),
+          ),
+          boxShadow: [
+            BoxShadow(
+              spreadRadius: AppSize.size2,
+              color: AppColors.blackTextColor.withOpacity(AppSize.opacity10),
+              blurRadius: AppSize.size20,
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: AppSize.size8),
+                      child: Image.asset(
+                        AppIcons.carModelIcon,
+                        width: AppSize.size24,
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: AppSize.size6),
+                          child: Row(
+                            children: [
+                              const Text(
+                                'Current Ride',
+                                style: TextStyle(
+                                  fontSize: AppSize.size16,
+                                  fontFamily: FontFamily.latoBold,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.blackTextColor,
+                                ),
+                              ),
+                              if (ride.distanceKm != null) ...[
+                                const SizedBox(width: AppSize.size8),
+                                Text(
+                                  '${ride.distanceKm!.toStringAsFixed(1)} km',
+                                  style: const TextStyle(
+                                    fontSize: AppSize.size12,
+                                    fontFamily: FontFamily.latoRegular,
+                                    fontWeight: FontWeight.w400,
+                                    color: AppColors.smallTextColor,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '\$${ride.finalAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: AppSize.size12,
+                            fontFamily: FontFamily.latoRegular,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.smallTextColor,
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSize.size12),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: AppSize.size10,
+                                height: AppSize.size10,
+                                margin: const EdgeInsets.only(right: AppSize.size6),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.greenColor,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Container(
+                                    width: AppSize.size6,
+                                    height: AppSize.size6,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppColors.greenColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: AppSize.size150,
+                                child: Text(
+                                  ride.pickupAddress,
+                                  style: const TextStyle(
+                                    fontSize: AppSize.size12,
+                                    fontFamily: FontFamily.latoRegular,
+                                    fontWeight: FontWeight.w400,
+                                    color: AppColors.blackTextColor,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.only(left: AppSize.size4),
+                          height: AppSize.size12,
+                          width: AppSize.size1,
+                          color: AppColors.smallTextColor,
+                        ),
+                        Row(
+                          children: [
+                            Container(
+                              width: AppSize.size10,
+                              height: AppSize.size10,
+                              margin: const EdgeInsets.only(right: AppSize.size6),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.redColor,
+                                ),
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: AppSize.size6,
+                                  height: AppSize.size6,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppColors.redColor,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: AppSize.size150,
+                              child: Text(
+                                ride.dropoffAddress,
+                                style: const TextStyle(
+                                  fontSize: AppSize.size12,
+                                  fontFamily: FontFamily.latoRegular,
+                                  fontWeight: FontWeight.w400,
+                                  color: AppColors.blackTextColor,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        fontSize: AppSize.size12,
+                        fontFamily: FontFamily.latoMedium,
+                        fontWeight: FontWeight.w500,
+                        color: statusColor,
+                      ),
+                    ),
+                    if (ride.driver != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSize.size38),
+                        child: Image.asset(
+                          AppIcons.man1Icon,
+                          width: AppSize.size28,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoActiveRideCard() {
+    return Container(
+      margin: const EdgeInsets.only(top: AppSize.size16),
+      padding: const EdgeInsets.all(AppSize.size20),
+      decoration: BoxDecoration(
+        color: AppColors.backGroundColor,
+        borderRadius: BorderRadius.circular(AppSize.size10),
+        border: Border.all(
+          color: AppColors.smallTextColor.withOpacity(AppSize.opacity10),
+        ),
+      ),
+      child: Column(
+        children: [
+          Image.asset(
+            AppIcons.carIcon,
+            width: AppSize.size48,
+            color: AppColors.smallTextColor,
+          ),
+          const SizedBox(height: AppSize.size12),
+          const Text(
+            'No Active Ride',
+            style: TextStyle(
+              fontSize: AppSize.size16,
+              fontFamily: FontFamily.latoBold,
+              fontWeight: FontWeight.w700,
+              color: AppColors.blackTextColor,
+            ),
+          ),
+          const SizedBox(height: AppSize.size8),
+          const Text(
+            'Book a ride to get started',
+            style: TextStyle(
+              fontSize: AppSize.size12,
+              fontFamily: FontFamily.latoRegular,
+              fontWeight: FontWeight.w400,
+              color: AppColors.smallTextColor,
+            ),
+          ),
+          const SizedBox(height: AppSize.size16),
+          GestureDetector(
+            onTap: () {
+              Get.to(() => SelectRouteWithMapScreen());
+            },
+            child: Container(
+              height: AppSize.size46,
+              decoration: BoxDecoration(
+                color: AppColors.blackTextColor,
+                borderRadius: BorderRadius.circular(AppSize.size10),
+              ),
+              child: const Center(
+                child: Text(
+                  'Book a Ride',
+                  style: TextStyle(
+                    fontSize: AppSize.size14,
+                    fontFamily: FontFamily.latoSemiBold,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.backGroundColor,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

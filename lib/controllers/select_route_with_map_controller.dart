@@ -20,19 +20,44 @@ import 'package:prime_taxi_flutter_ui_kit/controllers/home_controller.dart';
 
 HomeController homeController = Get.put(HomeController());
 
+class PlacePrediction {
+  final String placeId;
+  final String description;
+  final String mainText;
+  final String secondaryText;
+
+  PlacePrediction({
+    required this.placeId,
+    required this.description,
+    required this.mainText,
+    required this.secondaryText,
+  });
+
+  factory PlacePrediction.fromJson(Map<String, dynamic> json) {
+    return PlacePrediction(
+      placeId: json['place_id'] ?? '',
+      description: json['description'] ?? '',
+      mainText: json['structured_formatting']?['main_text'] ?? json['description'] ?? '',
+      secondaryText: json['structured_formatting']?['secondary_text'] ?? '',
+    );
+  }
+}
+
 class SelectRouteWithMapController extends GetxController {
   RxSet<Marker> markers = <Marker>{}.obs;
   RxString userAddress = ''.obs;
   RxBool like = false.obs;
   BitmapDescriptor? customMarker;
   final MarkerId markerId = const MarkerId(AppStrings.currentLocation);
-  LatLng? selectedDestination = const LatLng(21.2212, 72.8688);
+  // Default to Qatar (Doha)
+  LatLng? selectedDestination;
   GoogleMapController? myMapController;
   RxBool isSwapped = false.obs;
   RxList<Widget> routeListTiles = <Widget>[].obs;
-  RxDouble latitude = 0.0.obs;
-  RxDouble longitude = 0.0.obs;
-  Rx<LatLng> initialLocation = const LatLng(0, 0).obs;
+  // Default to Qatar (Doha) coordinates
+  RxDouble latitude = 25.2854.obs;
+  RxDouble longitude = 51.5310.obs;
+  Rx<LatLng> initialLocation = const LatLng(25.2854, 51.5310).obs;
   Rx<LatLng> userLocation = const LatLng(0, 0).obs;
   RxInt selectedServiceIndex = 0.obs;
   TextEditingController locationController =
@@ -51,6 +76,41 @@ class SelectRouteWithMapController extends GetxController {
   RxBool isBottomSheetOpen = false.obs;
   Timer? timer;
 
+  // 0 = pickup field, 1 = destination field
+  RxInt activeFieldIndex = 1.obs;
+
+  // Current zoom level
+  double currentZoom = 14.0;
+
+  // Search suggestions
+  RxList<PlacePrediction> pickupSuggestions = <PlacePrediction>[].obs;
+  RxList<PlacePrediction> destinationSuggestions = <PlacePrediction>[].obs;
+  RxBool isSearchingPickup = false.obs;
+  RxBool isSearchingDestination = false.obs;
+  RxBool showPickupSuggestions = false.obs;
+  RxBool showDestinationSuggestions = false.obs;
+
+  // Debounce timers
+  Timer? _pickupDebounce;
+  Timer? _destinationDebounce;
+
+  // Flag to prevent search when programmatically setting text
+  bool _isSelectingPlace = false;
+
+  // Zoom in
+  void zoomIn() {
+    currentZoom = currentZoom + 1;
+    if (currentZoom > 20) currentZoom = 20;
+    myMapController?.animateCamera(CameraUpdate.zoomTo(currentZoom));
+  }
+
+  // Zoom out
+  void zoomOut() {
+    currentZoom = currentZoom - 1;
+    if (currentZoom < 3) currentZoom = 3;
+    myMapController?.animateCamera(CameraUpdate.zoomTo(currentZoom));
+  }
+
   @override
   void onInit() {
     _getCurrentLocation();
@@ -62,14 +122,266 @@ class SelectRouteWithMapController extends GetxController {
       isTimerElapsed.value = true;
       update();
     });
+
+    // Add listeners for text controllers
+    locationController.addListener(_onPickupTextChanged);
+    destinationController.addListener(_onDestinationTextChanged);
+
     super.onInit();
   }
 
   @override
   void onClose() {
     timer?.cancel();
+    _pickupDebounce?.cancel();
+    _destinationDebounce?.cancel();
+    locationController.removeListener(_onPickupTextChanged);
+    destinationController.removeListener(_onDestinationTextChanged);
     showPolyline.value = false;
     super.onClose();
+  }
+
+  // Handle pickup text changes with debounce
+  void _onPickupTextChanged() {
+    // Skip if we're programmatically setting text after selection
+    if (_isSelectingPlace) return;
+
+    if (_pickupDebounce?.isActive ?? false) _pickupDebounce!.cancel();
+    _pickupDebounce = Timer(const Duration(milliseconds: 500), () {
+      final query = locationController.text;
+      if (query.length >= 2) {
+        searchPlaces(query, isPickup: true);
+      } else {
+        pickupSuggestions.clear();
+        showPickupSuggestions.value = false;
+      }
+    });
+  }
+
+  // Handle destination text changes with debounce
+  void _onDestinationTextChanged() {
+    // Skip if we're programmatically setting text after selection
+    if (_isSelectingPlace) return;
+
+    if (_destinationDebounce?.isActive ?? false) _destinationDebounce!.cancel();
+    _destinationDebounce = Timer(const Duration(milliseconds: 500), () {
+      final query = destinationController.text;
+      if (query.length >= 2) {
+        searchPlaces(query, isPickup: false);
+      } else {
+        destinationSuggestions.clear();
+        showDestinationSuggestions.value = false;
+      }
+    });
+  }
+  Future<void> drawRoute(LatLng origin, LatLng destination) async {
+    try {
+      final result = await polylinePoints.getRouteBetweenCoordinates(
+        request: PolylineRequest(
+          origin: PointLatLng(origin.latitude, origin.longitude),
+          destination: PointLatLng(destination.latitude, destination.longitude),
+          mode: TravelMode.driving,
+        ),
+      );
+
+      if (result.points.isEmpty) {
+        showPolyline.value = false;
+        return;
+      }
+
+      final routePoints = result.points
+          .map((p) => LatLng(p.latitude, p.longitude))
+          .toList();
+
+      polylines
+        ..clear()
+        ..add(
+          Polyline(
+            polylineId: const PolylineId('route'),
+            color: AppColors.primaryColor,
+            width: 5,
+            points: routePoints,
+          ),
+        );
+
+      showPolyline.value = true;
+      polylines.refresh();
+
+      // Auto-fit camera
+      final bounds = LatLngBounds(
+        southwest: LatLng(
+          origin.latitude < destination.latitude
+              ? origin.latitude
+              : destination.latitude,
+          origin.longitude < destination.longitude
+              ? origin.longitude
+              : destination.longitude,
+        ),
+        northeast: LatLng(
+          origin.latitude > destination.latitude
+              ? origin.latitude
+              : destination.latitude,
+          origin.longitude > destination.longitude
+              ? origin.longitude
+              : destination.longitude,
+        ),
+      );
+
+      myMapController?.animateCamera(
+        CameraUpdate.newLatLngBounds(bounds, 80),
+      );
+    } catch (e) {
+      showPolyline.value = false;
+      debugPrint('Route error: $e');
+    }
+  }
+
+  // Search places using Google Places Autocomplete API
+  Future<void> searchPlaces(String query, {required bool isPickup}) async {
+    if (query.isEmpty) return;
+
+    if (isPickup) {
+      isSearchingPickup.value = true;
+    } else {
+      isSearchingDestination.value = true;
+    }
+
+    const apiKey = AppStrings.key;
+    final encodedQuery = Uri.encodeComponent(query);
+
+    // Use current location for location bias
+    String locationBias = '';
+    if (latitude.value != 0 && longitude.value != 0) {
+      locationBias = '&location=${latitude.value},${longitude.value}&radius=50000';
+    }
+
+    final apiUrl =
+        'https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$encodedQuery&key=$apiKey$locationBias';
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final decodedResponse = json.decode(response.body);
+        final predictions = decodedResponse['predictions'] as List<dynamic>? ?? [];
+
+        final suggestions = predictions
+            .map((p) => PlacePrediction.fromJson(p))
+            .toList();
+
+        if (isPickup) {
+          pickupSuggestions.value = suggestions;
+          showPickupSuggestions.value = suggestions.isNotEmpty;
+        } else {
+          destinationSuggestions.value = suggestions;
+          showDestinationSuggestions.value = suggestions.isNotEmpty;
+        }
+      }
+    } catch (e) {
+      print('Place search error: $e');
+    } finally {
+      if (isPickup) {
+        isSearchingPickup.value = false;
+      } else {
+        isSearchingDestination.value = false;
+      }
+    }
+  }
+
+  // Select a place from suggestions
+  Future<void> selectPlace(PlacePrediction place,
+      {required bool isPickup}) async {
+    _isSelectingPlace = true;
+
+    clearPickupSuggestions();
+    clearDestinationSuggestions();
+
+    final latLng = await _getPlaceDetails(place.placeId);
+    if (latLng == null) {
+      _isSelectingPlace = false;
+      return;
+    }
+
+    if (isPickup) {
+      locationController.text = place.description;
+      initialLocation.value = latLng;
+
+      markers.removeWhere((m) => m.markerId.value == 'pickup_marker');
+      addCustomMarker(
+        latLng,
+        'pickup_marker',
+        'Pickup',
+        place.description,
+        BitmapDescriptor.fromBytes(await getBytesFromAsset(
+            path: 'assets/icons/pickup_marker.png',
+            height: 80,
+            width: 80)),
+      );
+    } else {
+      destinationController.text = place.description;
+      selectedDestination = latLng;
+
+      markers.removeWhere(
+              (m) => m.markerId.value == AppStrings.destinationMarker);
+      addCustomMarker(
+        latLng,
+        AppStrings.destinationMarker,
+        'Destination',
+        place.description,
+        BitmapDescriptor.fromBytes(await getBytesFromAsset(
+            path: 'assets/icons/destination_marker.png',
+            height: 80,
+            width: 80)),
+      );
+    }
+
+    // ✅ DRAW ROUTE WHEN BOTH EXIST
+    if (selectedDestination != null) {
+      await drawRoute(initialLocation.value, selectedDestination!);
+    } else {
+      myMapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(latLng, 15),
+      );
+    }
+
+    _isSelectingPlace = false;
+    update();
+  }
+
+
+  // Get place details (coordinates) from place ID
+  Future<LatLng?> _getPlaceDetails(String placeId) async {
+    const apiKey = AppStrings.key;
+    final apiUrl =
+        'https://maps.googleapis.com/maps/api/place/details/json?place_id=$placeId&fields=geometry&key=$apiKey';
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final decodedResponse = json.decode(response.body);
+        final result = decodedResponse['result'];
+
+        if (result != null && result['geometry'] != null) {
+          final location = result['geometry']['location'];
+          return LatLng(location['lat'], location['lng']);
+        }
+      }
+    } catch (e) {
+      print('Place details error: $e');
+    }
+    return null;
+  }
+
+  // Clear suggestions
+  void clearPickupSuggestions() {
+    pickupSuggestions.clear();
+    showPickupSuggestions.value = false;
+  }
+
+  void clearDestinationSuggestions() {
+    destinationSuggestions.clear();
+    showDestinationSuggestions.value = false;
   }
 
   Future<void> loadCustomMarker() async {
@@ -92,25 +404,52 @@ class SelectRouteWithMapController extends GetxController {
   }
 
   Future<void> _getCurrentLocation() async {
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+    try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('Location services are disabled.');
+        return;
+      }
 
-    latitude.value = position.latitude;
-    longitude.value = position.longitude;
-    addCustomMarker(
-      LatLng(latitude.value, longitude.value),
-      AppStrings.currentLocation,
-      '',
-      '',
-      BitmapDescriptor.fromBytes(await getBytesFromAsset(
-          path: AppIcons.myPointIcon,
-          height: AppSize.size80.toInt(),
-          width: AppSize.size80.toInt())),
-    );
-    await _getCurrentAddress(latitude.value, longitude.value);
-    initialLocation.value = LatLng(latitude.value, longitude.value);
-    update();
+      // Check and request permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          print('Location permissions are denied');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        print('Location permissions are permanently denied');
+        return;
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      latitude.value = position.latitude;
+      longitude.value = position.longitude;
+      addCustomMarker(
+        LatLng(latitude.value, longitude.value),
+        AppStrings.currentLocation,
+        '',
+        '',
+        BitmapDescriptor.fromBytes(await getBytesFromAsset(
+            path: AppIcons.myPointIcon,
+            height: AppSize.size80.toInt(),
+            width: AppSize.size80.toInt())),
+      );
+      await _getCurrentAddress(latitude.value, longitude.value);
+      initialLocation.value = LatLng(latitude.value, longitude.value);
+      update();
+    } catch (e) {
+      print('Error getting location: $e');
+    }
   }
 
   Future<String> _getCurrentAddress(double latitude, double longitude) async {
@@ -206,33 +545,17 @@ class SelectRouteWithMapController extends GetxController {
 
   void onMarkerTap(LatLng latLng) {}
   gMapsFunctionCall(context) {
-    Timer(const Duration(seconds: 2), () async {
-      var libraryPlaceResult = await MapServices().nearByPlaceDetailsAPI(
-          const LatLng(21.2315, 72.8663), 16093.4.toInt(), "library");
-      var parkPlaceResult = await MapServices().nearByPlaceDetailsAPI(
-          const LatLng(21.2315, 72.8663), 16093.4.toInt(), "park");
-
-      List<dynamic> placeWithinList =
-          (libraryPlaceResult['results'] + parkPlaceResult['results']) as List;
-      // allMarkerList.clear();
-      // allMarkerList.addAll(placeWithinList);
-
-      for (var element in placeWithinList) {
-        setNearMarker(
-            LatLng(element['geometry']['location']['lat'],
-                element['geometry']['location']['lng']),
-            element['name'],
-            element['types'],
-            element['business_status'] ?? 'not available',
-            element['vicinity']);
-      }
-      addPolylineToDestination();
+    // Move camera to Qatar (Doha) on map load
+    Timer(const Duration(seconds: 1), () async {
+      myMapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(const LatLng(25.2854, 51.5310), 12),
+      );
     });
   }
 
   void addPolylineToDestination() async {
     if (selectedDestination != null) {
-      LatLng destinationLatLng = const LatLng(21.2212, 72.8688);
+      LatLng destinationLatLng = selectedDestination!;
       polylines.clear();
       markers.removeWhere(
           (marker) => marker.markerId.value == AppStrings.destinationMarker);
@@ -242,9 +565,9 @@ class SelectRouteWithMapController extends GetxController {
         AppStrings.destinationPoint,
         AppStrings.yourDestination,
         BitmapDescriptor.fromBytes(await getBytesFromAsset(
-            path: AppIcons.locationPointIcon,
-            height: AppSize.size60.toInt(),
-            width: AppSize.size60.toInt())),
+            path: 'assets/icons/destination_marker.png',
+            height: 80,
+            width: 80)),
       );
       await calculateRouteAndDrawPolyline(
         destinationLatLng,
@@ -262,7 +585,7 @@ class SelectRouteWithMapController extends GetxController {
         request: PolylineRequest(
             destination:
                 PointLatLng(destination.latitude, destination.longitude),
-            origin: const PointLatLng(21.233482, 72.863646),
+            origin: PointLatLng(initialLocation.value.latitude, initialLocation.value.longitude),
             mode: TravelMode.driving),
         //googleApiKey: "AIzaSyAgrMwwCZlfp8Updk7wpl0oBihrvG4QfNc",
       );
@@ -278,13 +601,17 @@ class SelectRouteWithMapController extends GetxController {
           points: polylineCoordinates,
           width: 5,
         );
+        polylines.clear();
         polylines.add(polyline);
         showPolyline.value = true;
+        polylines.refresh();
+        update();
       } else {
         showPolyline.value = false;
       }
     } catch (e) {
       showPolyline.value = false;
+      print('Route calculation error: $e');
     }
   }
 
@@ -294,6 +621,315 @@ class SelectRouteWithMapController extends GetxController {
         routeListTiles[routeListTiles.length - 1];
     routeListTiles[routeListTiles.length - 1] = temp;
 
+    // Also swap the actual location data
+    final tempLocation = initialLocation.value;
+    final tempAddress = locationController.text;
+
+    initialLocation.value = selectedDestination ?? const LatLng(0, 0);
+    locationController.text = destinationController.text;
+
+    selectedDestination = tempLocation;
+    destinationController.text = tempAddress;
+
     isSwapped.value = !isSwapped.value;
+
+    // Redraw polyline
+    if (_isPickupSet() && _isDestinationSet()) {
+      calculateRouteFromAddresses(initialLocation.value, selectedDestination!);
+    }
+  }
+
+  // Set which field is active for map selection
+  void setActiveField(int index) {
+    activeFieldIndex.value = index;
+    // Clear opposite suggestions when switching fields
+    if (index == 0) {
+      clearDestinationSuggestions();
+    } else {
+      clearPickupSuggestions();
+    }
+    update();
+  }
+
+  // Handle map tap - update selected field with tapped location
+  Future<void> onMapTapped(LatLng tappedLocation) async {
+    _isSelectingPlace = true;
+
+    final address = await _reverseGeocode(tappedLocation) ?? '';
+
+    if (activeFieldIndex.value == 0) {
+      locationController.text = address;
+      initialLocation.value = tappedLocation;
+
+      markers.removeWhere((m) => m.markerId.value == 'pickup_marker');
+      addCustomMarker(
+        tappedLocation,
+        'pickup_marker',
+        'Pickup',
+        address,
+        BitmapDescriptor.fromBytes(await getBytesFromAsset(
+            path: 'assets/icons/pickup_marker.png',
+            height: 80,
+            width: 80)),
+      );
+    } else {
+      destinationController.text = address;
+      selectedDestination = tappedLocation;
+
+      markers.removeWhere(
+              (m) => m.markerId.value == AppStrings.destinationMarker);
+      addCustomMarker(
+        tappedLocation,
+        AppStrings.destinationMarker,
+        'Destination',
+        address,
+        BitmapDescriptor.fromBytes(await getBytesFromAsset(
+            path: 'assets/icons/destination_marker.png',
+            height: 80,
+            width: 80)),
+      );
+    }
+
+    if (selectedDestination != null) {
+      await drawRoute(initialLocation.value, selectedDestination!);
+    }
+
+    _isSelectingPlace = false;
+    update();
+  }
+
+
+  // Check if pickup location has been set by user
+  bool _isPickupSet() {
+    return initialLocation.value.latitude != 25.2854 ||
+           initialLocation.value.longitude != 51.5310;
+  }
+
+  // Check if destination has been set by user
+  bool _isDestinationSet() {
+    return selectedDestination != null &&
+           (selectedDestination!.latitude != 25.2854 ||
+            selectedDestination!.longitude != 51.5310);
+  }
+
+  // Reverse geocode - get address from LatLng
+  Future<String?> _reverseGeocode(LatLng location) async {
+    const apiKey = AppStrings.key;
+    final apiUrl =
+        'https://maps.googleapis.com/maps/api/geocode/json?latlng=${location.latitude},${location.longitude}&key=$apiKey';
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final decodedResponse = json.decode(response.body);
+        final results = decodedResponse['results'] as List<dynamic>;
+
+        if (results.isNotEmpty) {
+          return results.first['formatted_address'] as String;
+        }
+      }
+    } catch (e) {
+      print('Reverse geocoding error: $e');
+    }
+    return null;
+  }
+
+  // Geocode addresses and show markers on map
+  Future<void> geocodeAndShowMarkers(String? pickupAddress, String? destinationAddress) async {
+    // Geocode pickup address
+    if (pickupAddress != null && pickupAddress.isNotEmpty) {
+      LatLng? pickupLatLng = await _geocodeAddress(pickupAddress);
+      if (pickupLatLng != null) {
+        initialLocation.value = pickupLatLng;
+        markers.removeWhere((marker) => marker.markerId.value == 'pickup_marker');
+        addCustomMarker(
+          pickupLatLng,
+          'pickup_marker',
+          'Pickup Location',
+          pickupAddress,
+          BitmapDescriptor.fromBytes(await getBytesFromAsset(
+              path: 'assets/icons/pickup_marker.png',
+              height: 80,
+              width: 80)),
+        );
+        // Move camera to pickup location
+        myMapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(pickupLatLng, 14),
+        );
+      }
+    }
+
+    // Geocode destination address
+    if (destinationAddress != null && destinationAddress.isNotEmpty) {
+      LatLng? destLatLng = await _geocodeAddress(destinationAddress);
+      if (destLatLng != null) {
+        selectedDestination = destLatLng;
+        markers.removeWhere((marker) => marker.markerId.value == AppStrings.destinationMarker);
+        addCustomMarker(
+          destLatLng,
+          AppStrings.destinationMarker,
+          'Destination',
+          destinationAddress,
+          BitmapDescriptor.fromBytes(await getBytesFromAsset(
+              path: 'assets/icons/destination_marker.png',
+              height: 80,
+              width: 80)),
+        );
+
+        // Draw polyline between pickup and destination
+        if (_isPickupSet()) {
+          await calculateRouteFromAddresses(initialLocation.value, destLatLng);
+        }
+      }
+    }
+    update();
+  }
+
+  // Geocode an address to LatLng
+  Future<LatLng?> _geocodeAddress(String address) async {
+    const apiKey = AppStrings.key;
+    final encodedAddress = Uri.encodeComponent(address);
+    final apiUrl =
+        'https://maps.googleapis.com/maps/api/geocode/json?address=$encodedAddress&key=$apiKey';
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final decodedResponse = json.decode(response.body);
+        final results = decodedResponse['results'] as List<dynamic>;
+
+        if (results.isNotEmpty) {
+          final location = results.first['geometry']['location'];
+          return LatLng(location['lat'], location['lng']);
+        }
+      }
+    } catch (e) {
+      print('Geocoding error: $e');
+    }
+    return null;
+  }
+
+  // Calculate route between two LatLng points
+  Future<void> calculateRouteFromAddresses(LatLng origin, LatLng destination) async {
+    try {
+      PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
+        request: PolylineRequest(
+            destination: PointLatLng(destination.latitude, destination.longitude),
+            origin: PointLatLng(origin.latitude, origin.longitude),
+            mode: TravelMode.driving),
+      );
+
+      if (result.points.isNotEmpty) {
+        List<LatLng> polylineCoordinates = result.points
+            .map((PointLatLng point) => LatLng(point.latitude, point.longitude))
+            .toList();
+
+        Polyline polyline = Polyline(
+          polylineId: const PolylineId(AppStrings.route),
+          color: AppColors.primaryColor,
+          points: polylineCoordinates,
+          width: 5,
+        );
+        polylines.clear();
+        polylines.add(polyline);
+        showPolyline.value = true;
+        polylines.refresh();
+        update();
+
+        // Fit camera to show both markers
+        LatLngBounds bounds = LatLngBounds(
+          southwest: LatLng(
+            origin.latitude < destination.latitude ? origin.latitude : destination.latitude,
+            origin.longitude < destination.longitude ? origin.longitude : destination.longitude,
+          ),
+          northeast: LatLng(
+            origin.latitude > destination.latitude ? origin.latitude : destination.latitude,
+            origin.longitude > destination.longitude ? origin.longitude : destination.longitude,
+          ),
+        );
+        myMapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
+      } else {
+        showPolyline.value = false;
+      }
+    } catch (e) {
+      showPolyline.value = false;
+      print('Route calculation error: $e');
+    }
+  }
+
+  // Use current location for pickup
+  Future<void> useCurrentLocationForPickup() async {
+    try {
+      // Check if we already have location
+      if (latitude.value != 0 && longitude.value != 0) {
+        await _setPickupFromLocation(latitude.value, longitude.value);
+        return;
+      }
+
+      // Otherwise try to get current location
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        Get.snackbar('Error', 'Location services are disabled',
+            snackPosition: SnackPosition.BOTTOM);
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          Get.snackbar('Error', 'Location permission denied',
+              snackPosition: SnackPosition.BOTTOM);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        Get.snackbar('Error', 'Location permission permanently denied. Please enable in settings.',
+            snackPosition: SnackPosition.BOTTOM);
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      latitude.value = position.latitude;
+      longitude.value = position.longitude;
+      await _setPickupFromLocation(position.latitude, position.longitude);
+    } catch (e) {
+      Get.snackbar('Error', 'Could not get current location',
+          snackPosition: SnackPosition.BOTTOM);
+      print('Error getting location: $e');
+    }
+  }
+
+  Future<void> _setPickupFromLocation(double lat, double lng) async {
+    final address = await _reverseGeocode(LatLng(lat, lng));
+    locationController.text = address ?? '';
+    initialLocation.value = LatLng(lat, lng);
+
+    // Update pickup marker
+    markers.removeWhere((marker) => marker.markerId.value == 'pickup_marker');
+    addCustomMarker(
+      LatLng(lat, lng),
+      'pickup_marker',
+      'Pickup Location',
+      address ?? '',
+      BitmapDescriptor.fromBytes(await getBytesFromAsset(
+          path: 'assets/icons/pickup_marker.png',
+          height: 80,
+          width: 80)),
+    );
+
+    // Draw polyline if destination is set
+    if (_isDestinationSet()) {
+      await calculateRouteFromAddresses(initialLocation.value, selectedDestination!);
+    }
+
+    clearPickupSuggestions();
+    update();
   }
 }

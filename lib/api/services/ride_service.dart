@@ -46,7 +46,8 @@ class RideService {
     required String dropoffAddress,
     required String paymentMethod,
     String? couponCode,
-    int? usePoints,
+    int usePoints = 0,
+    DateTime? scheduledTime,
   }) async {
     try {
       final response = await _apiClient.post(
@@ -59,9 +60,9 @@ class RideService {
           'dropoff_lng': dropoffLng,
           'dropoff_address': dropoffAddress,
           'payment_method': paymentMethod,
-          if (couponCode != null && couponCode.isNotEmpty)
-            'coupon_code': couponCode,
-          if (usePoints != null && usePoints > 0) 'use_points': usePoints,
+          'coupon_code': couponCode,
+          'use_points': usePoints,
+          'pickup_time': scheduledTime?.toIso8601String(),
         },
         requiresAuth: true,
       );

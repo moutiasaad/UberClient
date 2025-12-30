@@ -7,16 +7,13 @@ class ProfileService {
 
   // Get Profile
   Future<UserModel> getProfile() async {
-    try {
-      final response = await _apiClient.get(
-        ApiConstants.customerProfile,
-        requiresAuth: true,
-      );
+    final response = await _apiClient.get(ApiConstants.customerProfile, requiresAuth: true);
 
-      return UserModel.fromJson(response['data'] ?? response['user'] ?? response);
-    } catch (e) {
-      rethrow;
-    }
+    // depending on your API shape:
+    final data = response['data'] ?? response;
+    final userJson = data['user'] ?? data;
+
+    return UserModel.fromJson(userJson);
   }
 
   // Update Profile

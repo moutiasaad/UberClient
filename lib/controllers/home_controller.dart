@@ -10,10 +10,12 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:prime_taxi_flutter_ui_kit/api/services/ride_service.dart';
 import 'package:prime_taxi_flutter_ui_kit/config/app_icons.dart';
 import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
 import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
 import 'package:http/http.dart' as http;
+import 'package:prime_taxi_flutter_ui_kit/models/ride_model.dart';
 
 import '../api/map_service.dart';
 
@@ -33,10 +35,14 @@ class HomeController extends GetxController {
   Rx<LatLng> initialLocation = const LatLng(0, 0).obs;
   Rx<LatLng> userLocation = const LatLng(0, 0).obs;
   RxInt selectedServiceIndex = 0.obs;
+  final RideService _rideService = RideService();
+  Rx<RideModel?> activeRide = Rx<RideModel?>(null);
+  Timer? _ridePollingTimer;
 
   @override
   void onInit() {
     _getCurrentLocation();
+    loadActiveRide();
     createMarkers();
     loadCustomMarker();
     ever(userAddress, (_) {
@@ -44,6 +50,56 @@ class HomeController extends GetxController {
     });
     super.onInit();
   }
+  Future<void> loadActiveRide() async {
+    try {
+      final ride = await _rideService.getActiveRide();
+      if (ride != null) {
+        activeRide.value = ride;
+        handleRideState(ride);
+        startRidePolling(ride.id);
+      }
+    } catch (_) {}
+  }
+  void handleRideState(RideModel ride) {
+    switch (ride.status) {
+      case 'pending':
+      case 'searching':
+        Get.offAllNamed('/searching-driver', arguments: ride);
+        break;
+
+      case 'accepted':
+      case 'arrived':
+        Get.offAllNamed('/driver-details', arguments: ride);
+        break;
+
+      case 'started':
+        Get.offAllNamed('/trip-in-progress', arguments: ride);
+        break;
+
+      case 'completed':
+        activeRide.value = null;
+        Get.offAllNamed('/ride-summary', arguments: ride);
+        break;
+
+      case 'cancelled':
+        activeRide.value = null;
+        Get.offAllNamed('/home');
+        break;
+    }
+  }
+  void startRidePolling(int rideId) {
+    _ridePollingTimer?.cancel();
+
+    _ridePollingTimer = Timer.periodic(
+      const Duration(seconds: 5),
+          (_) async {
+        final updatedRide = await _rideService.getRideDetails(rideId);
+        activeRide.value = updatedRide;
+        handleRideState(updatedRide);
+      },
+    );
+  }
+
 
   Future<void> loadCustomMarker() async {
     customMarker = await BitmapDescriptor.fromAssetImage(
@@ -65,25 +121,52 @@ class HomeController extends GetxController {
   }
 
   Future<void> _getCurrentLocation() async {
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+    try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('Location services are disabled.');
+        return;
+      }
 
-    latitude.value = position.latitude;
-    longitude.value = position.longitude;
-    addCustomMarker(
-      LatLng(latitude.value, longitude.value),
-      AppStrings.currentLocation,
-      '',
-      '',
-      BitmapDescriptor.fromBytes(await getBytesFromAsset(
-          path: AppIcons.currentLocation,
-          height: AppSize.size80.toInt(),
-          width: AppSize.size80.toInt())),
-    );
-    await _getCurrentAddress(latitude.value, longitude.value);
-    initialLocation.value = LatLng(latitude.value, longitude.value);
-    update();
+      // Check and request permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          print('Location permissions are denied');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        print('Location permissions are permanently denied');
+        return;
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      latitude.value = position.latitude;
+      longitude.value = position.longitude;
+      addCustomMarker(
+        LatLng(latitude.value, longitude.value),
+        AppStrings.currentLocation,
+        '',
+        '',
+        BitmapDescriptor.fromBytes(await getBytesFromAsset(
+            path: AppIcons.currentLocation,
+            height: AppSize.size80.toInt(),
+            width: AppSize.size80.toInt())),
+      );
+      await _getCurrentAddress(latitude.value, longitude.value);
+      initialLocation.value = LatLng(latitude.value, longitude.value);
+      update();
+    } catch (e) {
+      print('Error getting location: $e');
+    }
   }
 
   Future<String> _getCurrentAddress(double latitude, double longitude) async {

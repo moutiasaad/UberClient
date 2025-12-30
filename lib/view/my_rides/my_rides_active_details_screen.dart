@@ -5,8 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart';
+import 'package:prime_taxi_flutter_ui_kit/api/services/ride_service.dart';
 import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
 import 'package:prime_taxi_flutter_ui_kit/controllers/my_rides_controller.dart';
+import 'package:prime_taxi_flutter_ui_kit/models/ride_model.dart';
 import 'package:prime_taxi_flutter_ui_kit/view/book_ride/cancel_car_screen.dart';
 import 'package:prime_taxi_flutter_ui_kit/view/book_ride/driver_details_screen.dart';
 
@@ -17,11 +20,65 @@ import '../../config/app_strings.dart';
 import '../../config/font_family.dart';
 import '../safety/safety_screen.dart';
 
-class MyRidesActiveDetailsScreen extends StatelessWidget {
-  MyRidesActiveDetailsScreen({Key? key}) : super(key: key);
+class MyRidesActiveDetailsScreen extends StatefulWidget {
+  final int rideId;
 
-  MyRidesController myRidesController = Get.put(MyRidesController());
+  const MyRidesActiveDetailsScreen({Key? key, required this.rideId}) : super(key: key);
+
+  @override
+  State<MyRidesActiveDetailsScreen> createState() => _MyRidesActiveDetailsScreenState();
+}
+
+class _MyRidesActiveDetailsScreenState extends State<MyRidesActiveDetailsScreen> {
+  final MyRidesController myRidesController = Get.put(MyRidesController());
   final LanguageController languageController = Get.put(LanguageController());
+  final RideService _rideService = RideService();
+
+  RideModel? rideDetails;
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRideDetails();
+  }
+
+  Future<void> _loadRideDetails() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final ride = await _rideService.getRideDetails(widget.rideId);
+
+      setState(() {
+        rideDetails = ride;
+        isLoading = false;
+      });
+
+      // Update map markers
+      if (ride.pickupLat != 0 && ride.pickupLng != 0) {
+        myRidesController.updateMarkersForRide(
+          pickupLat: ride.pickupLat,
+          pickupLng: ride.pickupLng,
+          dropoffLat: ride.dropoffLat,
+          dropoffLng: ride.dropoffLng,
+        );
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = e.toString();
+      });
+    }
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    return DateFormat('EEEE, MMM d').format(date);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,16 +89,56 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
         child: Scaffold(
           backgroundColor: AppColors.backGroundColor,
           appBar: _appBar(),
-          body: _myRidesActiveDetailsContent(),
-          floatingActionButton: _bottomButton(),
+          body: isLoading
+              ? const Center(child: CircularProgressIndicator(color: AppColors.primaryColor))
+              : errorMessage != null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Error loading ride details',
+                            style: const TextStyle(
+                              fontSize: AppSize.size16,
+                              fontFamily: FontFamily.latoMedium,
+                              color: AppColors.blackTextColor,
+                            ),
+                          ),
+                          const SizedBox(height: AppSize.size16),
+                          GestureDetector(
+                            onTap: _loadRideDetails,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSize.size20,
+                                vertical: AppSize.size10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryColor,
+                                borderRadius: BorderRadius.circular(AppSize.size10),
+                              ),
+                              child: const Text(
+                                'Retry',
+                                style: TextStyle(
+                                  color: AppColors.backGroundColor,
+                                  fontFamily: FontFamily.latoMedium,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _myRidesActiveDetailsContent(),
+          floatingActionButton: rideDetails != null && rideDetails!.isCancellable
+              ? _bottomButton()
+              : null,
           floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         ),
       ),
     );
   }
 
-  //My Rides Active Details Content
-  _appBar() {
+  PreferredSizeWidget _appBar() {
     return AppBar(
       scrolledUnderElevation: 0,
       backgroundColor: AppColors.backGroundColor,
@@ -81,7 +178,30 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
     );
   }
 
-  _myRidesActiveDetailsContent() {
+  Widget _myRidesActiveDetailsContent() {
+    if (rideDetails == null) return const SizedBox.shrink();
+
+    final ride = rideDetails!;
+
+    // Get status color
+    Color statusColor;
+    switch (ride.statusColor) {
+      case 'warning':
+        statusColor = Colors.orange;
+        break;
+      case 'success':
+        statusColor = AppColors.greenColor;
+        break;
+      case 'danger':
+        statusColor = AppColors.redColor;
+        break;
+      case 'info':
+        statusColor = AppColors.primaryColor;
+        break;
+      default:
+        statusColor = AppColors.primaryColor;
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.only(
         top: AppSize.size24,
@@ -96,16 +216,17 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
                 myLocationEnabled: false,
                 myLocationButtonEnabled: false,
                 zoomControlsEnabled: false,
-                initialCameraPosition: const CameraPosition(
-                  target: LatLng(AppSize.latitude, AppSize.longitude),
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(ride.pickupLat, ride.pickupLng),
                   zoom: AppSize.size15,
                 ),
                 mapType: MapType.normal,
                 markers: Set.from(myRidesController.markers),
                 onMapCreated: (controller) {
                   myRidesController.myMapController = controller;
-                  myRidesController
-                      .gMapsFunctionCall(myRidesController.initialLocation);
+                  myRidesController.gMapsFunctionCall(
+                    LatLng(ride.pickupLat, ride.pickupLng),
+                  );
                 },
               ),
             ),
@@ -138,14 +259,14 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Padding(
-                              padding: EdgeInsets.only(bottom: AppSize.size6),
+                              padding: const EdgeInsets.only(bottom: AppSize.size6),
                               child: Text(
-                                AppStrings.sundayNov6,
-                                style: TextStyle(
+                                _formatDate(ride.createdAt),
+                                style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontFamily: FontFamily.latoBold,
                                   fontSize: AppSize.size16,
@@ -154,8 +275,8 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              AppStrings.carCRM,
-                              style: TextStyle(
+                              'Ride #${ride.id}',
+                              style: const TextStyle(
                                 fontWeight: FontWeight.w400,
                                 fontFamily: FontFamily.latoRegular,
                                 fontSize: AppSize.size12,
@@ -166,13 +287,13 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const Text(
-                      AppStrings.active,
+                    Text(
+                      ride.statusText ?? ride.status.toUpperCase(),
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
                         fontFamily: FontFamily.latoMedium,
                         fontSize: AppSize.size12,
-                        color: AppColors.primaryColor,
+                        color: statusColor,
                       ),
                     ),
                   ],
@@ -217,13 +338,17 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const Text(
-                      AppStrings.willow777,
-                      style: TextStyle(
-                        fontSize: AppSize.size12,
-                        fontFamily: FontFamily.latoRegular,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.blackTextColor,
+                    Expanded(
+                      child: Text(
+                        ride.pickupAddress,
+                        style: const TextStyle(
+                          fontSize: AppSize.size12,
+                          fontFamily: FontFamily.latoRegular,
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.blackTextColor,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -271,13 +396,17 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const Text(
-                      AppStrings.meadowCountry2,
-                      style: TextStyle(
-                        fontSize: AppSize.size12,
-                        fontFamily: FontFamily.latoRegular,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.blackTextColor,
+                    Expanded(
+                      child: Text(
+                        ride.dropoffAddress,
+                        style: const TextStyle(
+                          fontSize: AppSize.size12,
+                          fontFamily: FontFamily.latoRegular,
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.blackTextColor,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -319,36 +448,40 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _customDetails(AppIcons.dollarIcon, AppStrings.dollar78,
-                            AppStrings.rideFare),
+                        _customDetails(
+                          AppIcons.dollarIcon,
+                          '\$${ride.finalAmount.toStringAsFixed(2)}',
+                          AppStrings.rideFare,
+                        ),
                         VerticalDivider(
                           color: AppColors.smallTextColor
                               .withOpacity(AppSize.opacity20),
                           indent: AppSize.size28,
                           endIndent: AppSize.size28,
                         ),
-                        _customDetails(AppIcons.tripIcon, AppStrings.trip0,
-                            AppStrings.trip),
+                        _customDetails(
+                          AppIcons.tripIcon,
+                          '${ride.distanceKm?.toStringAsFixed(1) ?? '0'} km',
+                          AppStrings.trip,
+                        ),
                         VerticalDivider(
                           color: AppColors.smallTextColor
                               .withOpacity(AppSize.opacity20),
                           indent: AppSize.size28,
                           endIndent: AppSize.size28,
                         ),
-                        _customDetails(AppIcons.yearIcon, AppStrings.minute2,
-                            AppStrings.tripTime),
+                        _customDetails(
+                          AppIcons.yearIcon,
+                          '${ride.estimatedDurationMinutes ?? 0} min',
+                          AppStrings.tripTime,
+                        ),
                       ],
                     ),
                   ),
                 ),
                 Container(
                   margin: const EdgeInsets.only(top: AppSize.size16),
-                  height: AppSize.size158,
-                  padding: const EdgeInsets.only(
-                    top: AppSize.size16,
-                    left: AppSize.size16,
-                    right: AppSize.size16,
-                  ),
+                  padding: const EdgeInsets.all(AppSize.size16),
                   decoration: BoxDecoration(
                     color: AppColors.backGroundColor,
                     borderRadius: BorderRadius.circular(AppSize.size10),
@@ -386,9 +519,17 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const Text(
-                            AppStrings.rideConfirmed,
-                            style: TextStyle(
+                          Text(
+                            ride.isPending
+                                ? 'Searching for driver...'
+                                : ride.isAccepted
+                                    ? 'Driver is on the way'
+                                    : ride.isArrived
+                                        ? 'Driver has arrived'
+                                        : ride.isStarted
+                                            ? 'Trip in progress'
+                                            : 'Ride Confirmed',
+                            style: const TextStyle(
                               fontSize: AppSize.size14,
                               fontFamily: FontFamily.latoMedium,
                               fontWeight: FontWeight.w500,
@@ -397,236 +538,198 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      Obx(
-                        () => Container(
-                          margin: EdgeInsets.only(
-                              left: languageController.arb.value
-                                  ? 0
-                                  : AppSize.size13,
-                              right: languageController.arb.value
-                                  ? AppSize.size13
-                                  : AppSize.size0,
-                              top: AppSize.size1,
-                              bottom: AppSize.size1),
-                          height: AppSize.size26,
-                          width: AppSize.size1,
-                          color: AppColors.smallTextColor,
-                        ),
-                      ),
+                      const SizedBox(height: AppSize.size12),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Obx(
-                            () => Padding(
-                              padding: EdgeInsets.only(
-                                  right: languageController.arb.value
-                                      ? 0
-                                      : AppSize.size10,
-                                  left: languageController.arb.value
-                                      ? AppSize.size10
-                                      : AppSize.size0),
-                              child: Image.asset(
-                                AppIcons.doneIcon,
-                                width: AppSize.size28,
-                              ),
-                            ),
-                          ),
-                          const Text(
-                            AppStrings.tripConfirmed,
-                            style: TextStyle(
-                              fontSize: AppSize.size14,
-                              fontFamily: FontFamily.latoMedium,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.smallTextColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(
-                            top: AppSize.size15, bottom: AppSize.size10),
-                        child: Divider(
-                          color: AppColors.smallTextColor
-                              .withOpacity(AppSize.opacity20),
-                          height: AppSize.size0,
-                        ),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(
-                                right: AppSize.size6, left: AppSize.size6),
-                            child: Text(
-                              AppStrings.moreDetails,
-                              style: TextStyle(
-                                fontSize: AppSize.size14,
-                                fontFamily: FontFamily.latoMedium,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.primaryColor,
-                              ),
-                            ),
-                          ),
-                          Image.asset(
-                            AppIcons.rightArrowIcon2,
-                            width: AppSize.size14,
-                            color: AppColors.primaryColor,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  margin: const EdgeInsets.only(top: AppSize.size16),
-                  height: AppSize.size115,
-                  padding: const EdgeInsets.only(
-                    top: AppSize.size10,
-                    left: AppSize.size16,
-                    right: AppSize.size16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.backGroundColor,
-                    borderRadius: BorderRadius.circular(AppSize.size10),
-                    border: Border.all(
-                      color: AppColors.smallTextColor
-                          .withOpacity(AppSize.opacity15),
-                      width: AppSize.size1and5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        spreadRadius: AppSize.size1,
-                        color: AppColors.blackTextColor
-                            .withOpacity(AppSize.opacity10),
-                        blurRadius: AppSize.size17,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        visualDensity: const VisualDensity(
-                          vertical: AppSize.minus1,
-                        ),
-                        dense: true,
-                        horizontalTitleGap: AppSize.size3,
-                        leading: Image.asset(
-                          AppIcons.man3Icon,
-                          width: AppSize.size34,
-                        ),
-                        title: const Text(
-                          AppStrings.deirdreRaja,
-                          style: TextStyle(
-                            fontSize: AppSize.size16,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: FontFamily.latoBold,
-                            color: AppColors.blackTextColor,
-                          ),
-                        ),
-                        subtitle: const Text(
-                          AppStrings.miniCRM,
-                          style: TextStyle(
-                            fontSize: AppSize.size12,
-                            fontWeight: FontWeight.w400,
-                            fontFamily: FontFamily.latoRegular,
-                            color: AppColors.smallTextColor,
-                          ),
-                        ),
-                        trailing: SizedBox(
-                          width: AppSize.size65,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          Row(
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        right: AppSize.size3,
-                                        left: AppSize.size3),
-                                    child: Image.asset(
-                                      AppIcons.starIcon,
-                                      width: AppSize.size14,
-                                    ),
-                                  ),
-                                  const Text(
-                                    AppStrings.like1and6,
-                                    style: TextStyle(
-                                      fontSize: AppSize.size12,
-                                      fontWeight: FontWeight.w400,
-                                      fontFamily: FontFamily.latoRegular,
-                                      color: AppColors.smallTextColor,
-                                    ),
-                                  ),
-                                ],
+                              Image.asset(
+                                AppIcons.cashIcon,
+                                width: AppSize.size20,
                               ),
-                              const Padding(
-                                padding: EdgeInsets.only(
-                                  top: AppSize.size6,
-                                ),
-                                child: Text(
-                                  AppStrings.carNumber,
-                                  style: TextStyle(
-                                    fontSize: AppSize.size12,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: FontFamily.latoBold,
-                                    color: AppColors.blackTextColor,
-                                  ),
+                              const SizedBox(width: AppSize.size8),
+                              Text(
+                                ride.paymentMethod.toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: AppSize.size12,
+                                  fontFamily: FontFamily.latoMedium,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.smallTextColor,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(
-                            top: AppSize.size5, bottom: AppSize.size10),
-                        child: Divider(
-                          color: AppColors.smallTextColor
-                              .withOpacity(AppSize.opacity20),
-                          height: AppSize.size0,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Get.to(() => DriverDetailsScreen());
-                        },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Padding(
-                              padding: EdgeInsets.only(
-                                  right: AppSize.size6, left: AppSize.size6),
-                              child: Text(
-                                AppStrings.driverDetails,
-                                style: TextStyle(
-                                  fontSize: AppSize.size14,
-                                  fontFamily: FontFamily.latoMedium,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.primaryColor,
-                                ),
-                              ),
+                          Text(
+                            ride.paymentStatus?.toUpperCase() ?? 'PENDING',
+                            style: TextStyle(
+                              fontSize: AppSize.size12,
+                              fontFamily: FontFamily.latoMedium,
+                              fontWeight: FontWeight.w500,
+                              color: ride.paymentStatus == 'paid'
+                                  ? AppColors.greenColor
+                                  : Colors.orange,
                             ),
-                            Image.asset(
-                              AppIcons.rightArrowIcon2,
-                              width: AppSize.size14,
-                              color: AppColors.primaryColor,
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
+                // Driver info (only show if driver is assigned)
+                if (ride.driver != null) ...[
+                  Container(
+                    margin: const EdgeInsets.only(top: AppSize.size16),
+                    height: AppSize.size115,
+                    padding: const EdgeInsets.only(
+                      top: AppSize.size10,
+                      left: AppSize.size16,
+                      right: AppSize.size16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.backGroundColor,
+                      borderRadius: BorderRadius.circular(AppSize.size10),
+                      border: Border.all(
+                        color: AppColors.smallTextColor
+                            .withOpacity(AppSize.opacity15),
+                        width: AppSize.size1and5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          spreadRadius: AppSize.size1,
+                          color: AppColors.blackTextColor
+                              .withOpacity(AppSize.opacity10),
+                          blurRadius: AppSize.size17,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          visualDensity: const VisualDensity(
+                            vertical: AppSize.minus1,
+                          ),
+                          dense: true,
+                          horizontalTitleGap: AppSize.size3,
+                          leading: Image.asset(
+                            AppIcons.man3Icon,
+                            width: AppSize.size34,
+                          ),
+                          title: Text(
+                            ride.driver!.name,
+                            style: const TextStyle(
+                              fontSize: AppSize.size16,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: FontFamily.latoBold,
+                              color: AppColors.blackTextColor,
+                            ),
+                          ),
+                          subtitle: Text(
+                            ride.driver!.vehicleModel ?? '',
+                            style: const TextStyle(
+                              fontSize: AppSize.size12,
+                              fontWeight: FontWeight.w400,
+                              fontFamily: FontFamily.latoRegular,
+                              color: AppColors.smallTextColor,
+                            ),
+                          ),
+                          trailing: SizedBox(
+                            width: AppSize.size65,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          right: AppSize.size3,
+                                          left: AppSize.size3),
+                                      child: Image.asset(
+                                        AppIcons.starIcon,
+                                        width: AppSize.size14,
+                                      ),
+                                    ),
+                                    Text(
+                                      ride.driver!.rating.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontSize: AppSize.size12,
+                                        fontWeight: FontWeight.w400,
+                                        fontFamily: FontFamily.latoRegular,
+                                        color: AppColors.smallTextColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: AppSize.size6,
+                                  ),
+                                  child: Text(
+                                    ride.driver!.plateNumber ?? '',
+                                    style: const TextStyle(
+                                      fontSize: AppSize.size12,
+                                      fontWeight: FontWeight.w700,
+                                      fontFamily: FontFamily.latoBold,
+                                      color: AppColors.blackTextColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              top: AppSize.size5, bottom: AppSize.size10),
+                          child: Divider(
+                            color: AppColors.smallTextColor
+                                .withOpacity(AppSize.opacity20),
+                            height: AppSize.size0,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Get.to(() => DriverDetailsScreen());
+                          },
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.only(
+                                    right: AppSize.size6, left: AppSize.size6),
+                                child: Text(
+                                  AppStrings.driverDetails,
+                                  style: TextStyle(
+                                    fontSize: AppSize.size14,
+                                    fontFamily: FontFamily.latoMedium,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.primaryColor,
+                                  ),
+                                ),
+                              ),
+                              Image.asset(
+                                AppIcons.rightArrowIcon2,
+                                width: AppSize.size14,
+                                color: AppColors.primaryColor,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 GestureDetector(
                   onTap: () {
                     Get.to(() => SafetyScreen());
                   },
                   child: Container(
                     margin: const EdgeInsets.only(
-                        top: AppSize.size16, bottom: AppSize.size24),
+                        top: AppSize.size16, bottom: AppSize.size120),
                     height: AppSize.size54,
                     padding: const EdgeInsets.only(
                       left: AppSize.size16,
@@ -696,14 +799,14 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
     );
   }
 
-  _bottomButton() {
+  Widget _bottomButton() {
     return Container(
       height: AppSize.size100,
       color: AppColors.backGroundColor,
       child: Center(
         child: GestureDetector(
           onTap: () {
-            Get.to(() => CancelCarScreen());
+            Get.to(() => CancelCarScreen(rideId: widget.rideId));
           },
           child: Container(
             height: AppSize.size54,
@@ -732,7 +835,7 @@ class MyRidesActiveDetailsScreen extends StatelessWidget {
     );
   }
 
-  _customDetails(String image, String text1, String text2) {
+  Widget _customDetails(String image, String text1, String text2) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
