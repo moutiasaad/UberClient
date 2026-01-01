@@ -468,6 +468,13 @@ class SelectRouteWithMapScreen extends StatelessWidget {
             onTap: () {
               selectRouteWithMapController.setActiveField(fieldIndex);
             },
+            onChanged: (value) {
+              if (isPickup) {
+                selectRouteWithMapController.searchPlaces(value, isPickup: true);
+              } else {
+                selectRouteWithMapController.searchPlaces(value, isPickup: false);
+              }
+            },
           ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -517,7 +524,7 @@ class SelectRouteWithMapScreen extends StatelessWidget {
   }) {
     return Container(
       margin: const EdgeInsets.only(top: AppSize.size4),
-      constraints: const BoxConstraints(maxHeight: 250),
+      constraints: const BoxConstraints(maxHeight: 450),
       decoration: BoxDecoration(
         color: AppColors.backGroundColor,
         borderRadius: BorderRadius.circular(AppSize.size10),

@@ -68,7 +68,7 @@ class SelectRouteWithMapController extends GetxController {
       TextEditingController(text: AppStrings.stopDestination);
   RxSet<Polyline> polylines = <Polyline>{}.obs;
   RxBool showPolyline = false.obs;
-  final PolylinePoints polylinePoints = PolylinePoints(apiKey: 'AIzaSyAgrMwwCZlfp8Updk7wpl0oBihrvG4QfNc');
+  final PolylinePoints polylinePoints = PolylinePoints(apiKey: 'AIzaSyCrDYCXAVQZeXxbZx84iRVe5SMmBpm5sy8');
   RxBool isTimerElapsed = false.obs;
   RxBool isAppBarColorVisible = false.obs;
   RxBool isAppBarTitleVisible = false.obs;

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../client/api_client.dart';
 import '../constants/api_constants.dart';
@@ -86,6 +87,27 @@ class AuthService {
   /// Send FCM token to server
   Future<Map<String, dynamic>?> sendFcmToken() async {
     try {
+      print('📱 Starting FCM token process...');
+
+      // For iOS, we need to get the APNS token first
+      if (Platform.isIOS) {
+        print('🍎 iOS detected - getting APNS token first...');
+        final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        if (apnsToken != null) {
+          print('✅ APNS token received: ${apnsToken.substring(0, 20)}...');
+        } else {
+          print('⚠️ APNS token is null - waiting a bit and retrying...');
+          // Wait a bit and try again
+          await Future.delayed(const Duration(seconds: 2));
+          final retryApnsToken = await FirebaseMessaging.instance.getAPNSToken();
+          if (retryApnsToken == null) {
+            print('❌ APNS token still null after retry - skipping FCM token');
+            return null;
+          }
+          print('✅ APNS token received on retry');
+        }
+      }
+
       print('📱 Getting FCM token...');
       final fcmToken = await FirebaseMessaging.instance.getToken();
 
@@ -94,7 +116,7 @@ class AuthService {
         return null;
       }
 
-      print('📱 FCM Token: $fcmToken');
+      print('📱 FCM Token: ${fcmToken.substring(0, 20)}...');
 
       // Save FCM token locally
       await StorageController.instance.setString(ApiConstants.fcmTokenKey, fcmToken);
