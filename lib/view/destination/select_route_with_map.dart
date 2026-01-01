@@ -6,15 +6,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_colors.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_icons.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/font_family.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/book_ride_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/select_route_with_map_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/book_ride_screen.dart';
+import 'package:tshl_tawsil/config/app_colors.dart';
+import 'package:tshl_tawsil/config/app_icons.dart';
+import 'package:tshl_tawsil/config/app_size.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
+import 'package:tshl_tawsil/config/font_family.dart';
+import 'package:tshl_tawsil/controllers/book_ride_controller.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/controllers/select_route_with_map_controller.dart';
+import 'package:tshl_tawsil/view/book_ride/book_ride_screen.dart';
 
 import '../widget/discard_route_bottom_sheet.dart';
 
@@ -122,6 +122,13 @@ class SelectRouteWithMapScreen extends StatelessWidget {
   _routeMapContent(BuildContext context) {
     return Stack(
       children: [
+        // Step Indicator at the top
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: _buildStepIndicator(),
+        ),
         Container(
             width: double.infinity,
             height: double.infinity,
@@ -233,7 +240,7 @@ class SelectRouteWithMapScreen extends StatelessWidget {
         ),
         // Search fields with suggestions
         Positioned(
-          top: AppSize.size12,
+          top: AppSize.size10, // Closer to header
           left: AppSize.size20,
           right: AppSize.size20,
           child: Column(
@@ -608,83 +615,232 @@ class SelectRouteWithMapScreen extends StatelessWidget {
   }
 
   _bookRideButton(BuildContext context) {
-    return Container(
-      height: AppSize.size120,
-      color: AppColors.backGroundColor,
-      padding: const EdgeInsets.only(
-        top: AppSize.size16,
-      ),
-      child: Column(
-        children: [
-          const Text(
-            AppStrings.youCanSpendUp,
-            style: TextStyle(
-              fontSize: AppSize.size14,
-              fontWeight: FontWeight.w600,
-              fontFamily: FontFamily.latoSemiBold,
-              color: AppColors.blackTextColor,
-            ),
-          ),
-          GestureDetector(
-            onTap: () async {
-              // Get pickup coordinates and address
-              final pickupLat = selectRouteWithMapController.initialLocation.value.latitude;
-              final pickupLng = selectRouteWithMapController.initialLocation.value.longitude;
-              final pickupAddr = selectRouteWithMapController.locationController.text;
+    return Obx(() {
+      // Check if both locations are selected
+      final pickupLat = selectRouteWithMapController.initialLocation.value.latitude;
+      final pickupLng = selectRouteWithMapController.initialLocation.value.longitude;
+      final dropoffLat = selectRouteWithMapController.selectedDestination.value?.latitude ?? 0;
+      final dropoffLng = selectRouteWithMapController.selectedDestination.value?.longitude ?? 0;
 
-              // Get destination coordinates and address
-              final dropoffLat = selectRouteWithMapController.selectedDestination?.latitude ?? 0;
-              final dropoffLng = selectRouteWithMapController.selectedDestination?.longitude ?? 0;
-              final dropoffAddr = selectRouteWithMapController.destinationController.text;
+      // Pickup is set if it's not the default Doha location AND has valid coordinates
+      final isPickupSet = selectRouteWithMapController.locationController.text.isNotEmpty;
+      // Destination is set if it has valid coordinates
+      final isDestinationSet = selectRouteWithMapController.selectedDestination.value != null;
+      final isEnabled = isPickupSet && isDestinationSet;
 
-              // Validate that both locations are set
-              if (pickupLat == 0 || pickupLng == 0 || dropoffLat == 0 || dropoffLng == 0) {
-                Get.snackbar(
-                  'Error',
-                  'Please select both pickup and destination locations',
-                  snackPosition: SnackPosition.BOTTOM,
-                );
-                return;
-              }
-
-              // Set locations in BookRideController and calculate fare
-              bookRideController.setLocations(
-                pickLat: pickupLat,
-                pickLng: pickupLng,
-                pickAddress: pickupAddr,
-                dropLat: dropoffLat,
-                dropLng: dropoffLng,
-                dropAddress: dropoffAddr,
-              );
-
-              selectRouteWithMapController.addPolylineToDestination();
-              Get.to(() => BookRideScreen());
-            },
-            child: Container(
-              height: AppSize.size54,
-              margin: const EdgeInsets.only(
-                top: AppSize.size12,
-                left: AppSize.size20,
-                right: AppSize.size20,
-              ),
-              decoration: BoxDecoration(
+      return Container(
+        height: AppSize.size120,
+        color: AppColors.backGroundColor,
+        padding: const EdgeInsets.only(
+          top: AppSize.size16,
+        ),
+        child: Column(
+          children: [
+            const Text(
+              AppStrings.youCanSpendUp,
+              style: TextStyle(
+                fontSize: AppSize.size14,
+                fontWeight: FontWeight.w600,
+                fontFamily: FontFamily.latoSemiBold,
                 color: AppColors.blackTextColor,
-                borderRadius: BorderRadius.circular(AppSize.size10),
               ),
-              child: const Center(
-                child: Text(
-                  AppStrings.bookRide,
-                  style: TextStyle(
-                    fontSize: AppSize.size16,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: FontFamily.latoSemiBold,
-                    color: AppColors.backGroundColor,
+            ),
+            GestureDetector(
+              onTap: () async {
+                // Get pickup coordinates and address
+                final pickupAddr = selectRouteWithMapController.locationController.text;
+                final dropoffAddr = selectRouteWithMapController.destinationController.text;
+
+                // IMPROVED: Show specific error messages
+                if (!isPickupSet) {
+                  Get.snackbar(
+                    '📍 Pickup Location Required',
+                    'Please select your pickup location to continue',
+                    snackPosition: SnackPosition.TOP,
+                    backgroundColor: AppColors.primaryColor.withOpacity(0.9),
+                    colorText: AppColors.backGroundColor,
+                    duration: const Duration(seconds: 3),
+                    margin: const EdgeInsets.all(AppSize.size16),
+                    borderRadius: AppSize.size10,
+                  );
+                  return;
+                }
+
+                if (!isDestinationSet) {
+                  Get.snackbar(
+                    '📍 Destination Required',
+                    'Please select your destination to continue',
+                    snackPosition: SnackPosition.TOP,
+                    backgroundColor: AppColors.primaryColor.withOpacity(0.9),
+                    colorText: AppColors.backGroundColor,
+                    duration: const Duration(seconds: 3),
+                    margin: const EdgeInsets.all(AppSize.size16),
+                    borderRadius: AppSize.size10,
+                  );
+                  return;
+                }
+
+                // Show success feedback
+                Get.snackbar(
+                  '✅ Route Confirmed',
+                  'Proceeding to select your ride...',
+                  snackPosition: SnackPosition.TOP,
+                  backgroundColor: Colors.green.withOpacity(0.9),
+                  colorText: AppColors.backGroundColor,
+                  duration: const Duration(seconds: 2),
+                  margin: const EdgeInsets.all(AppSize.size16),
+                  borderRadius: AppSize.size10,
+                );
+
+                // Set locations in BookRideController and calculate fare
+                bookRideController.setLocations(
+                  pickLat: pickupLat,
+                  pickLng: pickupLng,
+                  pickAddress: pickupAddr,
+                  dropLat: dropoffLat,
+                  dropLng: dropoffLng,
+                  dropAddress: dropoffAddr,
+                );
+
+                selectRouteWithMapController.addPolylineToDestination();
+                Get.to(() => BookRideScreen());
+              },
+              child: Container(
+                height: AppSize.size54,
+                margin: const EdgeInsets.only(
+                  top: AppSize.size12,
+                  left: AppSize.size20,
+                  right: AppSize.size20,
+                ),
+                decoration: BoxDecoration(
+                  color: isEnabled
+                      ? AppColors.blackTextColor
+                      : AppColors.smallTextColor.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(AppSize.size10),
+                ),
+                child: Center(
+                  child: Text(
+                    AppStrings.bookRide,
+                    style: TextStyle(
+                      fontSize: AppSize.size16,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: FontFamily.latoSemiBold,
+                      color: isEnabled
+                          ? AppColors.backGroundColor
+                          : AppColors.smallTextColor.withOpacity(0.5),
+                    ),
                   ),
                 ),
               ),
             ),
+          ],
+        ),
+      );
+    });
+  }
+
+  // Step indicator showing booking progress
+  Widget _buildStepIndicator() {
+    return Obx(() {
+      // Determine current step based on what's been selected
+      int currentStep = 1; // Default: selecting pickup
+      bool hasPickup = selectRouteWithMapController.locationController.text.isNotEmpty &&
+          selectRouteWithMapController.initialLocation.value.latitude != 25.2854;
+      bool hasDestination = selectRouteWithMapController.selectedDestination != null;
+
+      if (hasPickup && !hasDestination) {
+        currentStep = 2; // Selecting destination
+      } else if (hasPickup && hasDestination) {
+        currentStep = 3; // Ready to book
+      }
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSize.size20, vertical: AppSize.size12),
+        decoration: BoxDecoration(
+          color: AppColors.backGroundColor.withOpacity(0.95),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.blackTextColor.withOpacity(0.05),
+              blurRadius: AppSize.size8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            _buildStepItem(1, 'Pickup', currentStep >= 1, currentStep == 1),
+            _buildStepConnector(currentStep >= 2),
+            _buildStepItem(2, 'Destination', currentStep >= 2, currentStep == 2),
+            _buildStepConnector(currentStep >= 3),
+            _buildStepItem(3, 'Book', currentStep >= 3, currentStep == 3),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildStepItem(int step, String label, bool isCompleted, bool isActive) {
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: AppSize.size28,
+            height: AppSize.size28,
+            decoration: BoxDecoration(
+              color: isCompleted
+                  ? AppColors.primaryColor
+                  : AppColors.smallTextColor.withOpacity(0.2),
+              shape: BoxShape.circle,
+              border: isActive
+                  ? Border.all(color: AppColors.primaryColor, width: 2)
+                  : null,
+            ),
+            child: Center(
+              child: isCompleted && step < 3
+                  ? const Icon(
+                      Icons.check,
+                      size: AppSize.size16,
+                      color: AppColors.backGroundColor,
+                    )
+                  : Text(
+                      '$step',
+                      style: TextStyle(
+                        fontSize: AppSize.size14,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: FontFamily.latoSemiBold,
+                        color: isCompleted
+                            ? AppColors.backGroundColor
+                            : AppColors.smallTextColor,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: AppSize.size4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: AppSize.size11,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+              fontFamily: isActive ? FontFamily.latoSemiBold : FontFamily.latoRegular,
+              color: isCompleted
+                  ? AppColors.primaryColor
+                  : AppColors.smallTextColor,
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStepConnector(bool isActive) {
+    return Expanded(
+      child: Container(
+        height: 2,
+        margin: const EdgeInsets.only(bottom: AppSize.size20, left: AppSize.size4, right: AppSize.size4),
+        color: isActive
+            ? AppColors.primaryColor
+            : AppColors.smallTextColor.withOpacity(0.3),
       ),
     );
   }

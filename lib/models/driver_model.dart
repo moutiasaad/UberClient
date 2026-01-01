@@ -48,7 +48,7 @@ class DriverModel {
       email: json['email'],
       phone: json['phone'] ?? '',
       image: json['image'] ?? json['profile_image'],
-      rating: (json['rating'] ?? 0).toDouble(),
+      rating: (json['rating'] ?? json['rating_average'] ?? 0).toDouble(),
       totalTrips: json['total_trips'] ?? json['trips_count'] ?? 0,
       yearsExperience: json['years_experience'] ?? json['experience_years'] ?? 0,
       vehicleType: json['vehicle_type'],
@@ -62,15 +62,24 @@ class DriverModel {
       nationalId: json['national_id'],
       status: json['status'] ?? 'offline',
       currentLatitude: json['current_latitude'] != null
-          ? (json['current_latitude']).toDouble()
+          ? _parseDouble(json['current_latitude'])
           : null,
       currentLongitude: json['current_longitude'] != null
-          ? (json['current_longitude']).toDouble()
+          ? _parseDouble(json['current_longitude'])
           : null,
       memberSince: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
     );
+  }
+
+  // Helper method to parse double from string or number
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toJson() {

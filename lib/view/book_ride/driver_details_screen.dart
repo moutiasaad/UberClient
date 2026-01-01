@@ -6,11 +6,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/driver_details_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/call_with_driver_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/chat_with_driver_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/trip_to_destination_screen.dart';
+import 'package:tshl_tawsil/controllers/driver_details_controller.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/view/book_ride/call_with_driver_screen.dart';
+import 'package:tshl_tawsil/view/book_ride/chat_with_driver_screen.dart';
+import 'package:tshl_tawsil/view/book_ride/trip_to_destination_screen.dart';
 
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';

@@ -1,72 +1,69 @@
 class PointsModel {
-  final int totalPoints;
-  final List<PointTransaction> transactions;
+  final int balance;
+  final double valueInDinar;
+  final int pointsToDinarRate;
+  final String currency;
+  final List<PointHistory> history;
 
   PointsModel({
-    required this.totalPoints,
-    required this.transactions,
+    required this.balance,
+    required this.valueInDinar,
+    required this.pointsToDinarRate,
+    required this.currency,
+    required this.history,
   });
 
   factory PointsModel.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] ?? json;
     return PointsModel(
-      totalPoints: json['total_points'] ?? json['balance'] ?? 0,
-      transactions: json['transactions'] != null
-          ? (json['transactions'] as List)
-              .map((t) => PointTransaction.fromJson(t))
-              .toList()
-          : [],
+      balance: data['balance'] ?? 0,
+      valueInDinar: (data['value_in_dinar'] ?? 0).toDouble(),
+      pointsToDinarRate: data['points_to_dinar_rate'] ?? 100,
+      currency: data['currency'] ?? 'SAR',
+      history: (data['history'] as List?)
+              ?.map((item) => PointHistory.fromJson(item))
+              .toList() ??
+          [],
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'total_points': totalPoints,
-      'transactions': transactions.map((t) => t.toJson()).toList(),
-    };
   }
 }
 
-class PointTransaction {
+class PointHistory {
   final int id;
   final String type;
+  final String typeText;
   final int points;
-  final String description;
+  final int balanceAfter;
   final int? rideId;
+  final String description;
+  final bool isPositive;
   final DateTime createdAt;
 
-  PointTransaction({
+  PointHistory({
     required this.id,
     required this.type,
+    required this.typeText,
     required this.points,
-    required this.description,
+    required this.balanceAfter,
     this.rideId,
+    required this.description,
+    required this.isPositive,
     required this.createdAt,
   });
 
-  factory PointTransaction.fromJson(Map<String, dynamic> json) {
-    return PointTransaction(
+  factory PointHistory.fromJson(Map<String, dynamic> json) {
+    return PointHistory(
       id: json['id'] ?? 0,
-      type: json['type'] ?? 'earned',
+      type: json['type'] ?? '',
+      typeText: json['type_text'] ?? '',
       points: json['points'] ?? 0,
-      description: json['description'] ?? '',
+      balanceAfter: json['balance_after'] ?? 0,
       rideId: json['ride_id'],
+      description: json['description'] ?? '',
+      isPositive: json['is_positive'] ?? true,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : DateTime.now(),
     );
   }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'type': type,
-      'points': points,
-      'description': description,
-      'ride_id': rideId,
-      'created_at': createdAt.toIso8601String(),
-    };
-  }
-
-  bool get isEarned => type == 'earned';
-  bool get isRedeemed => type == 'redeemed';
 }

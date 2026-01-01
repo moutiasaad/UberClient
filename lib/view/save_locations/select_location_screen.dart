@@ -4,9 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/select_location_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/widget/save_as_location_bottom_sheet.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/controllers/select_location_controller.dart';
+import 'package:tshl_tawsil/view/widget/save_as_location_bottom_sheet.dart';
 
 import '../../common_widgets/common_text_feild.dart';
 import '../../config/app_colors.dart';

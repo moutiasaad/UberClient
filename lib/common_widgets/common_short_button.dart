@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
+import 'package:tshl_tawsil/config/app_size.dart';
 
 class ShortButton extends StatelessWidget {
   final String? text;

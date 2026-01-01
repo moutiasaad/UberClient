@@ -1,19 +1,18 @@
 import '../client/api_client.dart';
-import '../constants/api_constants.dart';
 import '../../models/points_model.dart';
 
 class PointsService {
   final ApiClient _apiClient = ApiClient();
 
-  // Get Points Balance and History
+  // Get points balance and history
   Future<PointsModel> getPoints() async {
     try {
       final response = await _apiClient.get(
-        ApiConstants.customerPoints,
+        '/customer/points',
         requiresAuth: true,
       );
 
-      return PointsModel.fromJson(response['data'] ?? response);
+      return PointsModel.fromJson(response);
     } catch (e) {
       rethrow;
     }

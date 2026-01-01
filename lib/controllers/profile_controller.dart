@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
 
 import '../config/app_colors.dart';
 import '../config/app_size.dart';
@@ -44,36 +44,8 @@ class ProfileController extends GetxController {
   }
 
   Future<void> pickImage() async {
-    Get.bottomSheet(
-      Container(
-        margin: const EdgeInsets.only(bottom: AppSize.size35),
-        padding: const EdgeInsets.all(AppSize.size16),
-        decoration: const BoxDecoration(
-          color: AppColors.backGroundColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppSize.size16)),
-        ),
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text(AppStrings.camera),
-              onTap: () {
-                _getImage(ImageSource.camera);
-                Get.back();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo),
-              title: const Text(AppStrings.gallery),
-              onTap: () {
-                _getImage(ImageSource.gallery);
-                Get.back();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+    // Direct gallery selection only (no camera option)
+    _getImage(ImageSource.gallery);
   }
 
   Future<void> _getImage(ImageSource source) async {
@@ -106,6 +78,12 @@ class ProfileController extends GetxController {
           fontSize: AppSize.size14,
           fontFamily: FontFamily.latoRegular),
     );
+
+    // Set default country code to Qatar (+974)
+    countryCode = CountryCode(name: 'Qatar', code: 'QA', dialCode: '+974');
+    countryTextController.text = 'Qatar';
+    isChanged.value = true;
+
     super.onInit();
   }
 
@@ -158,6 +136,9 @@ class ProfileController extends GetxController {
 
   // Fetch profile data
   Future<void> fetchProfile() async {
+    // Prevent multiple simultaneous fetches
+    if (isLoading.value) return;
+
     try {
       isLoading.value = true;
 
@@ -184,18 +165,46 @@ class ProfileController extends GetxController {
     }
   }
 
-  // Update profile
+  // Update profile with name, phone, and optional image
   Future<void> updateProfile() async {
     try {
       isLoading.value = true;
 
+      // Build phone number with country code
+      final fullPhone = '${countryCode?.dialCode ?? '+974'}${mobileController.text.trim()}';
+
       final updatedProfile = await _profileService.updateProfile(
         name: nameController.text.trim(),
-        email: emailController.text.trim(),
+        phone: fullPhone,
+        imagePath: imagePath.value.isNotEmpty ? imagePath.value : null,
       );
 
       userData.value = updatedProfile;
-      Fluttertoast.showToast(msg: 'Profile updated successfully');
+
+      // Update text controllers with the response data
+      nameController.text = updatedProfile.name;
+      emailController.text = updatedProfile.email ?? '';
+
+      // Parse phone number to extract just the number part (without country code)
+      String phoneFromApi = updatedProfile.phone;
+      if (phoneFromApi.startsWith('+')) {
+        // Remove country code from phone number for display
+        final dialCode = countryCode?.dialCode ?? '+974';
+        if (phoneFromApi.startsWith(dialCode)) {
+          mobileController.text = phoneFromApi.substring(dialCode.length);
+        } else {
+          mobileController.text = phoneFromApi;
+        }
+      } else {
+        mobileController.text = phoneFromApi;
+      }
+
+      // Update image if available
+      if (updatedProfile.image != null && updatedProfile.image!.isNotEmpty) {
+        imagePath.value = updatedProfile.image!;
+      }
+
+      // Success notification is shown from UI
 
     } catch (e) {
       String errorMessage = 'Failed to update profile';
@@ -253,6 +262,33 @@ class ProfileController extends GetxController {
         errorMessage = e.message;
       }
       Fluttertoast.showToast(msg: errorMessage);
+    }
+  }
+
+  // Delete Account
+  Future<void> deleteAccount() async {
+    try {
+      isLoading.value = true;
+
+      // Call delete account API
+      await _profileService.deleteAccount();
+
+      // Logout and navigate to welcome screen
+      await _authService.logout();
+
+      Fluttertoast.showToast(msg: 'Account has been deleted');
+
+      // Navigate to welcome screen
+      Get.offAllNamed('/welcome');
+
+    } catch (e) {
+      String errorMessage = 'Failed to delete account';
+      if (e is ApiException) {
+        errorMessage = e.message;
+      }
+      Fluttertoast.showToast(msg: errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   }
 

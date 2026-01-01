@@ -1,7 +1,11 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import '../client/api_client.dart';
 import '../constants/api_constants.dart';
 import '../../models/ride_model.dart';
 import '../../models/fare_model.dart';
+import '../../controllers/storage_controller.dart';
 
 class RideService {
   final ApiClient _apiClient = ApiClient();
@@ -131,12 +135,35 @@ class RideService {
     required String reason,
   }) async {
     try {
-      await _apiClient.post(
-        '${ApiConstants.cancelRide}/$rideId/cancel',
-        body: {'reason': reason},
-        requiresAuth: true,
+      // Get auth token from storage
+      final token = await StorageController.instance.getString(ApiConstants.tokenKey);
+
+      debugPrint('🔴 Cancelling ride: $rideId with reason: $reason');
+      debugPrint('🔴 Full URL: ${ApiConstants.baseUrl}${ApiConstants.cancelRide}/$rideId/cancel');
+      debugPrint('🔑 Token: ${token?.substring(0, 20)}...');
+
+      // Use direct http.post as shown in the example
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.cancelRide}/$rideId/cancel'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'reason': reason}),
       );
+
+      debugPrint('🔴 Response status: ${response.statusCode}');
+      debugPrint('🔴 Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint('🟢 Ride cancelled successfully');
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to cancel ride');
+      }
     } catch (e) {
+      debugPrint('❌ Cancel ride error: $e');
       rethrow;
     }
   }

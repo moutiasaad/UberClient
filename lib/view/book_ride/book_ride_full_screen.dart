@@ -6,11 +6,11 @@ import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/book_ride_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/add_promo_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/book_car_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/widget/auto_details_bottom_sheet.dart';
+import 'package:tshl_tawsil/controllers/book_ride_controller.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/view/book_ride/add_promo_screen.dart';
+import 'package:tshl_tawsil/view/book_ride/book_car_screen.dart';
+import 'package:tshl_tawsil/view/widget/auto_details_bottom_sheet.dart';
 
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';

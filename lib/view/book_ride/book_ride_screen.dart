@@ -9,12 +9,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/book_ride_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/select_route_with_map_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/book_ride_full_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/widget/auto_details_bottom_sheet.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/widget/schedule_a_ride_bottom_sheet.dart';
+import 'package:tshl_tawsil/controllers/book_ride_controller.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/controllers/select_route_with_map_controller.dart';
+import 'package:tshl_tawsil/view/book_ride/book_ride_full_screen.dart';
+import 'package:tshl_tawsil/view/widget/auto_details_bottom_sheet.dart';
+import 'package:tshl_tawsil/view/widget/schedule_a_ride_bottom_sheet.dart';
 
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';
@@ -97,6 +97,17 @@ class BookRideScreen extends StatelessWidget {
                 selectRouteWithMapController.myMapController = controller;
                 selectRouteWithMapController.gMapsFunctionCall(
                     selectRouteWithMapController.initialLocation);
+
+                // Draw polyline if both pickup and destination are set
+                if (bookRideController.pickupLat != null &&
+                    bookRideController.dropoffLat != null) {
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    selectRouteWithMapController.drawRoute(
+                      LatLng(bookRideController.pickupLat!, bookRideController.pickupLng!),
+                      LatLng(bookRideController.dropoffLat!, bookRideController.dropoffLng!),
+                    );
+                  });
+                }
               },
             ),
           ),
@@ -108,24 +119,6 @@ class BookRideScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(
-                    bottom: AppSize.size12,
-                    right: AppSize.size20,
-                  ),
-                  child: Align(
-                    alignment: Alignment.topRight,
-                    child: GestureDetector(
-                      onTap: () {
-                        Get.to(() => BookRideFullScreen());
-                      },
-                      child: Image.asset(
-                        AppIcons.fullScreenIcon,
-                        width: AppSize.size38,
-                      ),
-                    ),
-                  ),
-                ),
                 Padding(
                   padding: EdgeInsets.only(
                       bottom: Platform.isAndroid ? AppSize.size30 : AppSize.size10),
@@ -865,82 +858,82 @@ class BookRideScreen extends StatelessWidget {
                                                 ),
                                               ),
                                             )),
-                                            // Wallet option
-                                            Obx(() => GestureDetector(
-                                              onTap: () {
-                                                bookRideController.selectedPaymentMethod.value = 'wallet';
-                                              },
-                                              child: Container(
-                                                margin: const EdgeInsets.only(
-                                                  bottom: AppSize.size16,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: AppColors.backGroundColor,
-                                                  border: Border.all(
-                                                    color: bookRideController.selectedPaymentMethod.value == 'wallet'
-                                                        ? AppColors.primaryColor
-                                                        : AppColors.smallTextColor.withOpacity(AppSize.opacity15),
-                                                    width: AppSize.size1and5,
-                                                  ),
-                                                  borderRadius: BorderRadius.circular(AppSize.size10),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      spreadRadius: AppSize.opacity10,
-                                                      color: AppColors.blackTextColor.withOpacity(AppSize.opacity10),
-                                                      blurRadius: AppSize.size10,
-                                                    ),
-                                                  ],
-                                                ),
-                                                child: ListTile(
-                                                  dense: true,
-                                                  horizontalTitleGap: AppSize.size7,
-                                                  leading: Image.asset(
-                                                    AppIcons.walletIcon,
-                                                    width: AppSize.size28,
-                                                  ),
-                                                  title: const Text(
-                                                    'Wallet',
-                                                    style: TextStyle(
-                                                      fontSize: AppSize.size14,
-                                                      fontWeight: FontWeight.w700,
-                                                      fontFamily: FontFamily.latoBold,
-                                                      color: AppColors.blackTextColor,
-                                                    ),
-                                                  ),
-                                                  subtitle: const Text(
-                                                    'Pay with wallet balance',
-                                                    style: TextStyle(
-                                                      fontSize: AppSize.size12,
-                                                      fontWeight: FontWeight.w400,
-                                                      fontFamily: FontFamily.latoRegular,
-                                                      color: AppColors.smallTextColor,
-                                                    ),
-                                                  ),
-                                                  trailing: Container(
-                                                    width: AppSize.size16,
-                                                    height: AppSize.size16,
-                                                    decoration: BoxDecoration(
-                                                      border: Border.all(
-                                                        color: AppColors.primaryColor,
-                                                      ),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: bookRideController.selectedPaymentMethod.value == 'wallet'
-                                                        ? Center(
-                                                            child: Container(
-                                                              width: AppSize.size8,
-                                                              height: AppSize.size8,
-                                                              decoration: const BoxDecoration(
-                                                                color: AppColors.primaryColor,
-                                                                shape: BoxShape.circle,
-                                                              ),
-                                                            ),
-                                                          )
-                                                        : null,
-                                                  ),
-                                                ),
-                                              ),
-                                            )),
+                                            // Wallet option - HIDDEN FOR NOW
+                                            // Obx(() => GestureDetector(
+                                            //   onTap: () {
+                                            //     bookRideController.selectedPaymentMethod.value = 'wallet';
+                                            //   },
+                                            //   child: Container(
+                                            //     margin: const EdgeInsets.only(
+                                            //       bottom: AppSize.size16,
+                                            //     ),
+                                            //     decoration: BoxDecoration(
+                                            //       color: AppColors.backGroundColor,
+                                            //       border: Border.all(
+                                            //         color: bookRideController.selectedPaymentMethod.value == 'wallet'
+                                            //             ? AppColors.primaryColor
+                                            //             : AppColors.smallTextColor.withOpacity(AppSize.opacity15),
+                                            //         width: AppSize.size1and5,
+                                            //       ),
+                                            //       borderRadius: BorderRadius.circular(AppSize.size10),
+                                            //       boxShadow: [
+                                            //         BoxShadow(
+                                            //           spreadRadius: AppSize.opacity10,
+                                            //           color: AppColors.blackTextColor.withOpacity(AppSize.opacity10),
+                                            //           blurRadius: AppSize.size10,
+                                            //         ),
+                                            //       ],
+                                            //     ),
+                                            //     child: ListTile(
+                                            //       dense: true,
+                                            //       horizontalTitleGap: AppSize.size7,
+                                            //       leading: Image.asset(
+                                            //         AppIcons.walletIcon,
+                                            //         width: AppSize.size28,
+                                            //       ),
+                                            //       title: const Text(
+                                            //         'Wallet',
+                                            //         style: TextStyle(
+                                            //           fontSize: AppSize.size14,
+                                            //           fontWeight: FontWeight.w700,
+                                            //           fontFamily: FontFamily.latoBold,
+                                            //           color: AppColors.blackTextColor,
+                                            //         ),
+                                            //       ),
+                                            //       subtitle: const Text(
+                                            //         'Pay with wallet balance',
+                                            //         style: TextStyle(
+                                            //           fontSize: AppSize.size12,
+                                            //           fontWeight: FontWeight.w400,
+                                            //           fontFamily: FontFamily.latoRegular,
+                                            //           color: AppColors.smallTextColor,
+                                            //         ),
+                                            //       ),
+                                            //       trailing: Container(
+                                            //         width: AppSize.size16,
+                                            //         height: AppSize.size16,
+                                            //         decoration: BoxDecoration(
+                                            //           border: Border.all(
+                                            //             color: AppColors.primaryColor,
+                                            //           ),
+                                            //           shape: BoxShape.circle,
+                                            //         ),
+                                            //         child: bookRideController.selectedPaymentMethod.value == 'wallet'
+                                            //             ? Center(
+                                            //                 child: Container(
+                                            //                   width: AppSize.size8,
+                                            //                   height: AppSize.size8,
+                                            //                   decoration: const BoxDecoration(
+                                            //                     color: AppColors.primaryColor,
+                                            //                     shape: BoxShape.circle,
+                                            //                   ),
+                                            //                 ),
+                                            //               )
+                                            //             : null,
+                                            //       ),
+                                            //     ),
+                                            //   ),
+                                            // )),
                                           ],
                                         ),
                                       ),

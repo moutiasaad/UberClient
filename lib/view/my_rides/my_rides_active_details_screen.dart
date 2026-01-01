@@ -1,17 +1,18 @@
 // ignore_for_file: must_be_immutable
 // ignore_for_file: deprecated_member_use
 
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:prime_taxi_flutter_ui_kit/api/services/ride_service.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/my_rides_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/models/ride_model.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/cancel_car_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/driver_details_screen.dart';
+import 'package:tshl_tawsil/api/services/ride_service.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/controllers/my_rides_controller.dart';
+import 'package:tshl_tawsil/models/ride_model.dart';
+import 'package:tshl_tawsil/view/book_ride/cancel_car_screen.dart';
+import 'package:tshl_tawsil/view/book_ride/driver_details_screen.dart';
 
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';
@@ -37,41 +38,82 @@ class _MyRidesActiveDetailsScreenState extends State<MyRidesActiveDetailsScreen>
   RideModel? rideDetails;
   bool isLoading = true;
   String? errorMessage;
+  Timer? _updateTimer;
 
   @override
   void initState() {
     super.initState();
     _loadRideDetails();
+    _startAutoUpdate();
   }
 
-  Future<void> _loadRideDetails() async {
+  @override
+  void dispose() {
+    _updateTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startAutoUpdate() {
+    // Update driver location every 20 seconds
+    _updateTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
+      if (mounted && rideDetails != null && !rideDetails!.isCompleted && !rideDetails!.isCancelled) {
+        _loadRideDetails(silent: true);
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  Future<void> _loadRideDetails({bool silent = false}) async {
     try {
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
+      if (!silent) {
+        setState(() {
+          isLoading = true;
+          errorMessage = null;
+        });
+      }
 
       final ride = await _rideService.getRideDetails(widget.rideId);
 
-      setState(() {
-        rideDetails = ride;
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          rideDetails = ride;
+          if (!silent) {
+            isLoading = false;
+          }
+        });
 
-      // Update map markers
-      if (ride.pickupLat != 0 && ride.pickupLng != 0) {
-        myRidesController.updateMarkersForRide(
-          pickupLat: ride.pickupLat,
-          pickupLng: ride.pickupLng,
-          dropoffLat: ride.dropoffLat,
-          dropoffLng: ride.dropoffLng,
-        );
+        // Update map markers with driver location
+        if (ride.pickupLat != 0 && ride.pickupLng != 0) {
+          await myRidesController.updateMarkersForRide(
+            pickupLat: ride.pickupLat,
+            pickupLng: ride.pickupLng,
+            dropoffLat: ride.dropoffLat,
+            dropoffLng: ride.dropoffLng,
+            driverLat: ride.driver?.currentLatitude,
+            driverLng: ride.driver?.currentLongitude,
+          );
+
+          // Draw polyline from pickup to dropoff using FREE OSRM API
+          debugPrint('📍 Drawing polyline from pickup (${ride.pickupLat}, ${ride.pickupLng}) to dropoff (${ride.dropoffLat}, ${ride.dropoffLng})');
+          await myRidesController.drawPolylineFromPickupToDropoff(
+            pickupLat: ride.pickupLat,
+            pickupLng: ride.pickupLng,
+            dropoffLat: ride.dropoffLat,
+            dropoffLng: ride.dropoffLng,
+          );
+        }
       }
     } catch (e) {
-      setState(() {
-        isLoading = false;
-        errorMessage = e.toString();
-      });
+      debugPrint('❌ Error loading ride details: $e');
+      if (mounted) {
+        setState(() {
+          if (!silent) {
+            isLoading = false;
+          }
+          errorMessage = e.toString();
+        });
+      }
     }
   }
 
@@ -129,7 +171,9 @@ class _MyRidesActiveDetailsScreenState extends State<MyRidesActiveDetailsScreen>
                       ),
                     )
                   : _myRidesActiveDetailsContent(),
-          floatingActionButton: rideDetails != null && rideDetails!.isCancellable
+          floatingActionButton: rideDetails != null &&
+              rideDetails!.isCancellable &&
+              rideDetails!.isPending
               ? _bottomButton()
               : null,
           floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -159,12 +203,12 @@ class _MyRidesActiveDetailsScreenState extends State<MyRidesActiveDetailsScreen>
                 width: AppSize.size20,
               ),
             ),
-            const Padding(
+            Padding(
               padding:
-                  EdgeInsets.only(left: AppSize.size12, right: AppSize.size12),
+                  const EdgeInsets.only(left: AppSize.size12, right: AppSize.size12),
               child: Text(
-                AppStrings.car,
-                style: TextStyle(
+                rideDetails != null ? 'Ride #${rideDetails!.id}' : AppStrings.car,
+                style: const TextStyle(
                   fontSize: AppSize.size20,
                   fontFamily: FontFamily.latoBold,
                   fontWeight: FontWeight.w700,
@@ -222,11 +266,9 @@ class _MyRidesActiveDetailsScreenState extends State<MyRidesActiveDetailsScreen>
                 ),
                 mapType: MapType.normal,
                 markers: Set.from(myRidesController.markers),
+                polylines: Set.from(myRidesController.polylines),
                 onMapCreated: (controller) {
                   myRidesController.myMapController = controller;
-                  myRidesController.gMapsFunctionCall(
-                    LatLng(ride.pickupLat, ride.pickupLng),
-                  );
                 },
               ),
             ),
@@ -680,43 +722,6 @@ class _MyRidesActiveDetailsScreenState extends State<MyRidesActiveDetailsScreen>
                                 ),
                               ],
                             ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(
-                              top: AppSize.size5, bottom: AppSize.size10),
-                          child: Divider(
-                            color: AppColors.smallTextColor
-                                .withOpacity(AppSize.opacity20),
-                            height: AppSize.size0,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Get.to(() => DriverDetailsScreen());
-                          },
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.only(
-                                    right: AppSize.size6, left: AppSize.size6),
-                                child: Text(
-                                  AppStrings.driverDetails,
-                                  style: TextStyle(
-                                    fontSize: AppSize.size14,
-                                    fontFamily: FontFamily.latoMedium,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.primaryColor,
-                                  ),
-                                ),
-                              ),
-                              Image.asset(
-                                AppIcons.rightArrowIcon2,
-                                width: AppSize.size14,
-                                color: AppColors.primaryColor,
-                              ),
-                            ],
                           ),
                         ),
                       ],

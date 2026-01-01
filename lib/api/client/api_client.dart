@@ -26,8 +26,12 @@ class ApiClient {
 
     if (requiresAuth) {
       final token = await _getToken();
+      print('🔑 Full Auth Token: $token');
       if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
+        print('✅ Authorization header added');
+      } else {
+        print('❌ No token available - request will be unauthorized');
       }
     }
 

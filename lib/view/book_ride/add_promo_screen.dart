@@ -5,8 +5,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/add_promo_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/widget/special_offers_bottom_sheet.dart';
+import 'package:tshl_tawsil/controllers/add_promo_controller.dart';
+import 'package:tshl_tawsil/view/widget/special_offers_bottom_sheet.dart';
 
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';

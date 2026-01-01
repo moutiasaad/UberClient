@@ -3,9 +3,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/home/home_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/save_locations/select_location_screen.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/view/home/home_screen.dart';
+import 'package:tshl_tawsil/view/save_locations/select_location_screen.dart';
 
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';

@@ -1,5 +1,5 @@
-name: prime_taxi_flutter_ui_kit
-description: Prime Taxi Booking Flutter UI Kit
+name: tshl_tawsil
+description: Tshl Tawsil - Taxi Booking App
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # Flutter Version: 3.32.0
 # Dart Version: 3.8.0
@@ -31,6 +31,20 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: ^0.20.2
+  google_fonts: ^6.1.0
+  nb_utils: ^7.0.3
+  flutter_feather_icons: ^2.0.0+1
+  flutter_iconly: ^1.0.2
+  provider: ^6.1.0
+  percent_indicator: ^4.2.3
+  smooth_page_indicator: ^1.2.0+3
+  country_code_picker: ^3.0.0
+  font_awesome_flutter: ^10.7.0
+  community_material_icon: ^5.9.55
+  material_design_icons_flutter: ^7.0.7296
+  flutter_credit_card: ^4.0.1
+  flag: ^7.0.0
+  get_storage: ^2.1.1
 
 dev_dependencies:
   flutter_test:
@@ -40,6 +54,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+     - assets/
      - assets/images/
      - assets/icons/
   fonts:

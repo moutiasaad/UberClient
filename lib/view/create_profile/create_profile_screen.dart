@@ -1,19 +1,20 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/common_widgets/common_button.dart';
-import 'package:prime_taxi_flutter_ui_kit/common_widgets/common_height_sized_box.dart';
-import 'package:prime_taxi_flutter_ui_kit/common_widgets/common_text_feild.dart';
-import 'package:prime_taxi_flutter_ui_kit/common_widgets/common_width_sized_box.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_colors.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_icons.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_images.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/font_family.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/create_profile_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/home_controller.dart';
+import 'package:tshl_tawsil/common_widgets/common_button.dart';
+import 'package:tshl_tawsil/common_widgets/common_height_sized_box.dart';
+import 'package:tshl_tawsil/common_widgets/common_text_feild.dart';
+import 'package:tshl_tawsil/common_widgets/common_width_sized_box.dart';
+import 'package:tshl_tawsil/config/app_colors.dart';
+import 'package:tshl_tawsil/config/app_icons.dart';
+import 'package:tshl_tawsil/config/app_images.dart';
+import 'package:tshl_tawsil/config/app_size.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
+import 'package:tshl_tawsil/config/font_family.dart';
+import 'package:tshl_tawsil/controllers/create_profile_controller.dart';
+import 'package:tshl_tawsil/controllers/home_controller.dart';
 
 class CreateProfileScreen extends StatelessWidget {
   CreateProfileScreen({super.key});
@@ -85,6 +86,7 @@ class CreateProfileScreen extends StatelessWidget {
                                   ),
                                   CommonHeightSizedBox(
                                       height: height / AppSize.size20),
+                                  // Name Field
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: AppSize.size20),
@@ -123,6 +125,7 @@ class CreateProfileScreen extends StatelessWidget {
                             ],
                           ),
                           CommonHeightSizedBox(height: height / AppSize.size60),
+                          // Email Field (Read-only)
                           Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: AppSize.size20),
@@ -136,6 +139,7 @@ class CreateProfileScreen extends StatelessWidget {
                                 )
                               ]),
                               child: CustomTextField(
+                                readOnly: true,
                                 prefixIcon: const SizedBox(
                                   width: AppSize.size16,
                                 ),
@@ -148,7 +152,7 @@ class CreateProfileScreen extends StatelessWidget {
                                 hintText: 'Enter Email Address',
                                 fillFontFamily: FontFamily.latoSemiBold,
                                 fillFontSize: AppSize.size14,
-                                colorText: AppColors.blackTextColor,
+                                colorText: AppColors.smallTextColor,
                                 textInputAction: TextInputAction.next,
                                 keyboardType: TextInputType.emailAddress,
                                 fillColor: AppColors.backGroundColor,
@@ -157,93 +161,130 @@ class CreateProfileScreen extends StatelessWidget {
                             ),
                           ),
                           CommonHeightSizedBox(height: height / AppSize.size60),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: AppSize.size20),
-                            child: Text(
-                              AppStrings.gender,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: AppColors.smallTextColor,
-                                fontFamily: FontFamily.latoRegular,
-                                fontSize: AppSize.size14,
-                              ),
-                            ),
-                          ),
-                          CommonHeightSizedBox(height: height / AppSize.size70),
-                          _buildGenderRow(),
-                          CommonHeightSizedBox(height: height / AppSize.size35),
+                          // Phone Number Field with Country Picker
                           Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: AppSize.size20),
                             child: Container(
                               height: AppSize.size54,
-                              decoration: BoxDecoration(boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.shadow,
-                                  blurRadius: AppSize.size66,
-                                  spreadRadius: AppSize.size0,
-                                )
-                              ]),
+                              decoration: BoxDecoration(
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.shadow,
+                                    blurRadius: AppSize.size66,
+                                    spreadRadius: AppSize.size0,
+                                  ),
+                                ],
+                              ),
                               child: CustomTextField(
-                                prefixIcon: const SizedBox(
-                                  width: AppSize.size16,
-                                ),
-                                prefixIconConstraints: const BoxConstraints(
-                                  minWidth: AppSize.size16,
-                                ),
-                                hintColor: AppColors.smallTextColor,
-                                fontFamily: FontFamily.latoRegular,
-                                fontSize: AppSize.size14,
-                                hintText: AppStrings.enterReferralCode,
+                                contentPadding: const EdgeInsets.only(
+                                    bottom: AppSize.size16, top: AppSize.size16),
+                                onChanged: (p0) {
+                                  createProfileController.checkPhoneNumberValidity(p0);
+                                },
+                                inputFormatters: [
+                                  LengthLimitingTextInputFormatter(AppSize.ten.toInt()),
+                                ],
                                 fillFontFamily: FontFamily.latoSemiBold,
                                 fillFontSize: AppSize.size14,
                                 colorText: AppColors.blackTextColor,
                                 textInputAction: TextInputAction.done,
+                                keyboardType: TextInputType.number,
+                                prefixIcon: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      final code =
+                                          await createProfileController.countryPicker?.showPicker(
+                                        context: context,
+                                      );
+                                      if (code != null) {
+                                        createProfileController.countryCode = code;
+                                        createProfileController.countryTextController.text =
+                                            code.name;
+                                        createProfileController.isChanged.toggle();
+                                      }
+                                    },
+                                    child: Obx(() => createProfileController.isChanged.value
+                                        ? Padding(
+                                            padding: const EdgeInsets.only(
+                                                left: AppSize.size16, right: AppSize.size8),
+                                            child: Row(
+                                              children: [
+                                                SizedBox(
+                                                    height: AppSize.size19,
+                                                    width: AppSize.size19,
+                                                    child: createProfileController.countryCode
+                                                            ?.flagImage() ??
+                                                        Image.asset(AppIcons.india)),
+                                                const CommonWidthSizedBox(width: AppSize.size4),
+                                                SizedBox(
+                                                    height: AppSize.size12,
+                                                    width: AppSize.size12,
+                                                    child: Center(
+                                                        child:
+                                                            Image.asset(AppIcons.arrowDown))),
+                                                const CommonWidthSizedBox(
+                                                    width: AppSize.size10),
+                                                Container(
+                                                  height: AppSize.size12,
+                                                  width: AppSize.size1,
+                                                  decoration: const BoxDecoration(
+                                                      color: AppColors.smallTextColor),
+                                                ),
+                                                const CommonWidthSizedBox(
+                                                    width: AppSize.size10),
+                                                Text(
+                                                    createProfileController.countryCode?.dialCode ??
+                                                        AppStrings.indiaCode,
+                                                    style:
+                                                        const TextStyle(color: Colors.black)),
+                                              ],
+                                            ),
+                                          )
+                                        : Padding(
+                                            padding: const EdgeInsets.only(
+                                                left: AppSize.size16, right: AppSize.size8),
+                                            child: Row(
+                                              children: [
+                                                SizedBox(
+                                                    height: AppSize.size19,
+                                                    width: AppSize.size19,
+                                                    child: createProfileController.countryCode
+                                                            ?.flagImage() ??
+                                                        Image.asset(AppIcons.india)),
+                                                const CommonWidthSizedBox(width: AppSize.size4),
+                                                SizedBox(
+                                                    height: AppSize.size12,
+                                                    width: AppSize.size12,
+                                                    child: Center(
+                                                        child:
+                                                            Image.asset(AppIcons.arrowDown))),
+                                                const CommonWidthSizedBox(
+                                                    width: AppSize.size10),
+                                                Container(
+                                                  height: AppSize.size12,
+                                                  width: AppSize.size1,
+                                                  decoration: const BoxDecoration(
+                                                      color: AppColors.smallTextColor),
+                                                ),
+                                                const CommonWidthSizedBox(
+                                                    width: AppSize.size10),
+                                                Text(
+                                                    createProfileController.countryCode?.dialCode ??
+                                                        AppStrings.indiaCode,
+                                                    style: const TextStyle(
+                                                        fontFamily: FontFamily.latoSemiBold,
+                                                        fontSize: AppSize.size14,
+                                                        color: AppColors.blackTextColor)),
+                                              ],
+                                            ),
+                                          )),
+                                  ),
+                                ),
                                 fillColor: AppColors.backGroundColor,
-                                controller: createProfileController.referralCodeController,
+                                controller: createProfileController.mobileController,
                               ),
-                            ),
-                          ),
-                          CommonHeightSizedBox(height: height / AppSize.size50),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: AppSize.size20),
-                            child: Row(
-                              children: [
-                                Obx(
-                                  () => Container(
-                                    height: AppSize.size16,
-                                    width: AppSize.size16,
-                                    decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(
-                                            AppSize.size4)),
-                                    child: Checkbox(
-                                      value:
-                                          createProfileController.check.value,
-                                      onChanged: (value) {
-                                        createProfileController.check.toggle();
-                                      },
-                                      checkColor: AppColors.backGroundColor,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                              AppSize.size4)),
-                                      activeColor: AppColors.primaryColor,
-                                    ),
-                                  ),
-                                ),
-                                const CommonWidthSizedBox(
-                                    width: AppSize.size10),
-                                const Text(
-                                  AppStrings.receiveImportantUpdates,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: AppColors.blackTextColor,
-                                    fontFamily: FontFamily.latoMedium,
-                                    fontSize: AppSize.size14,
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
                           SizedBox(
@@ -277,140 +318,6 @@ class CreateProfileScreen extends StatelessWidget {
                 },
               ),
             )),
-      ),
-    );
-  }
-
-  Padding _buildGenderRow() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSize.size20),
-      child: Row(
-        children: [
-          Obx(
-            () => Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  createProfileController.male.value = true;
-                  createProfileController.female.value = false;
-                  createProfileController.other.value = false;
-                },
-                child: Container(
-                  height: AppSize.size44,
-                  decoration: BoxDecoration(
-                      color: AppColors.backGroundColor,
-                      border: Border.all(
-                          color: createProfileController.male.value
-                              ? AppColors.primaryColor
-                              : AppColors.borderColor,
-                          width: AppSize.size1),
-                      borderRadius: BorderRadius.circular(AppSize.size8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.shadow,
-                          blurRadius: AppSize.size66,
-                          spreadRadius: AppSize.size0,
-                        )
-                      ]),
-                  child: Center(
-                    child: Text(
-                      AppStrings.male,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: createProfileController.male.value
-                            ? AppColors.primaryColor
-                            : AppColors.blackTextColor,
-                        fontFamily: FontFamily.latoRegular,
-                        fontSize: AppSize.size14,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const CommonWidthSizedBox(width: AppSize.size19),
-          Obx(
-            () => Expanded(
-                child: GestureDetector(
-                    onTap: () {
-                      createProfileController.male.value = false;
-                      createProfileController.female.value = true;
-                      createProfileController.other.value = false;
-                    },
-                    child: Container(
-                      height: AppSize.size44,
-                      decoration: BoxDecoration(
-                          color: AppColors.backGroundColor,
-                          border: Border.all(
-                              color: createProfileController.female.value
-                                  ? AppColors.primaryColor
-                                  : AppColors.borderColor,
-                              width: AppSize.size1),
-                          borderRadius: BorderRadius.circular(AppSize.size8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.shadow,
-                              blurRadius: AppSize.size66,
-                              spreadRadius: AppSize.size0,
-                            )
-                          ]),
-                      child: Center(
-                        child: Text(
-                          AppStrings.female,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: createProfileController.female.value
-                                ? AppColors.primaryColor
-                                : AppColors.blackTextColor,
-                            fontFamily: FontFamily.latoRegular,
-                            fontSize: AppSize.size14,
-                          ),
-                        ),
-                      ),
-                    ))),
-          ),
-          const CommonWidthSizedBox(width: AppSize.size19),
-          Obx(() => Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    createProfileController.male.value = false;
-                    createProfileController.female.value = false;
-                    createProfileController.other.value = true;
-                  },
-                  child: Container(
-                    height: AppSize.size44,
-                    decoration: BoxDecoration(
-                        color: AppColors.backGroundColor,
-                        border: Border.all(
-                            color: createProfileController.other.value
-                                ? AppColors.primaryColor
-                                : AppColors.borderColor,
-                            width: AppSize.size1),
-                        borderRadius: BorderRadius.circular(AppSize.size8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.shadow,
-                            blurRadius: AppSize.size66,
-                            spreadRadius: AppSize.size0,
-                          )
-                        ]),
-                    child: Center(
-                      child: Text(
-                        AppStrings.other,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: createProfileController.other.value
-                              ? AppColors.primaryColor
-                              : AppColors.blackTextColor,
-                          fontFamily: FontFamily.latoRegular,
-                          fontSize: AppSize.size14,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ))
-        ],
       ),
     );
   }

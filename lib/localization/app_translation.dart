@@ -1,8 +1,8 @@
-import 'package:prime_taxi_flutter_ui_kit/localization/ar_sa.dart';
-import 'package:prime_taxi_flutter_ui_kit/localization/de_de.dart';
-import 'package:prime_taxi_flutter_ui_kit/localization/en_us.dart';
-import 'package:prime_taxi_flutter_ui_kit/localization/fr_fr.dart';
-import 'package:prime_taxi_flutter_ui_kit/localization/zn_ch.dart';
+import 'package:tshl_tawsil/localization/ar_sa.dart';
+import 'package:tshl_tawsil/localization/de_de.dart';
+import 'package:tshl_tawsil/localization/en_us.dart';
+import 'package:tshl_tawsil/localization/fr_fr.dart';
+import 'package:tshl_tawsil/localization/zn_ch.dart';
 
 import 'hi_in.dart';
 

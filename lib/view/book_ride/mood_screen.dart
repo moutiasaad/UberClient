@@ -6,8 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/mood_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/home/home_screen.dart';
+import 'package:tshl_tawsil/controllers/mood_controller.dart';
+import 'package:tshl_tawsil/view/home/home_screen.dart';
 
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';

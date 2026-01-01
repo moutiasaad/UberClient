@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
 
 class ScheduleARideController extends GetxController {
   RxInt currentPage = 0.obs;

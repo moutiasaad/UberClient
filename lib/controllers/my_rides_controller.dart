@@ -15,6 +15,7 @@ import '../api/map_service.dart';
 import '../api/services/ride_service.dart';
 import '../api/client/api_client.dart';
 import '../models/ride_model.dart';
+import '../config/app_colors.dart';
 import '../config/app_icons.dart';
 import '../config/app_size.dart';
 import '../config/app_strings.dart';
@@ -352,52 +353,245 @@ class MyRidesController extends GetxController {
     required double pickupLng,
     required double dropoffLat,
     required double dropoffLng,
+    double? driverLat,
+    double? driverLng,
   }) async {
     markers.clear();
 
-    // Add pickup marker
+    // Add pickup marker (BIGGER SIZE) - Same green icon as select route screen
     addCustomMarker(
       LatLng(pickupLat, pickupLng),
       'pickup_marker',
       'Pickup',
       'Pickup Location',
       BitmapDescriptor.fromBytes(await getBytesFromAsset(
-        path: AppIcons.locationPin1,
-        height: AppSize.size60.toInt(),
-        width: AppSize.size60.toInt(),
+        path: 'assets/icons/pickup_marker.png',
+        height: 150,
+        width: 150,
       )),
     );
 
-    // Add dropoff marker
+    // Add dropoff marker (BIGGER SIZE) - Same red icon as select route screen
     addCustomMarker(
       LatLng(dropoffLat, dropoffLng),
       'dropoff_marker',
       'Dropoff',
       'Dropoff Location',
       BitmapDescriptor.fromBytes(await getBytesFromAsset(
-        path: AppIcons.locationPin2,
-        height: AppSize.size44.toInt(),
-        width: AppSize.size30.toInt(),
+        path: 'assets/icons/destination_marker.png',
+        height: 120,
+        width: 120,
       )),
     );
 
-    // Move camera to show both markers
+    // Add driver marker if location is available (BIGGER SIZE)
+    if (driverLat != null && driverLng != null) {
+      addCustomMarker(
+        LatLng(driverLat, driverLng),
+        'driver_marker',
+        'Driver',
+        'Driver Location',
+        BitmapDescriptor.fromBytes(await getBytesFromAsset(
+          path: AppIcons.carIcon,
+          height: 135,
+          width: 135,
+        )),
+      );
+    }
+
+    // Move camera to show all markers
     if (myMapController != null) {
+      List<double> latitudes = [pickupLat, dropoffLat];
+      List<double> longitudes = [pickupLng, dropoffLng];
+
+      if (driverLat != null && driverLng != null) {
+        latitudes.add(driverLat);
+        longitudes.add(driverLng);
+      }
+
       final bounds = LatLngBounds(
         southwest: LatLng(
-          pickupLat < dropoffLat ? pickupLat : dropoffLat,
-          pickupLng < dropoffLng ? pickupLng : dropoffLng,
+          latitudes.reduce((a, b) => a < b ? a : b),
+          longitudes.reduce((a, b) => a < b ? a : b),
         ),
         northeast: LatLng(
-          pickupLat > dropoffLat ? pickupLat : dropoffLat,
-          pickupLng > dropoffLng ? pickupLng : dropoffLng,
+          latitudes.reduce((a, b) => a > b ? a : b),
+          longitudes.reduce((a, b) => a > b ? a : b),
         ),
       );
       myMapController!.animateCamera(
-        CameraUpdate.newLatLngBounds(bounds, 50),
+        CameraUpdate.newLatLngBounds(bounds, 80),
       );
     }
 
     update();
+  }
+
+  // Draw polyline from driver to pickup (FREE - using OSRM API)
+  Future<void> drawPolylineToPickup({
+    required double driverLat,
+    required double driverLng,
+    required double pickupLat,
+    required double pickupLng,
+  }) async {
+    try {
+      polylines.clear();
+
+      // Use OSRM (OpenStreetMap Routing Machine) - 100% FREE, no API key needed
+      final url = 'https://router.project-osrm.org/route/v1/driving/$driverLng,$driverLat;$pickupLng,$pickupLat?overview=full&geometries=geojson';
+
+      debugPrint('🚗 Fetching route from OSRM...');
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['code'] == 'Ok' && data['routes'] != null && data['routes'].isNotEmpty) {
+          final route = data['routes'][0];
+          final geometry = route['geometry']['coordinates'] as List;
+
+          List<LatLng> polylineCoordinates = [];
+          for (var coord in geometry) {
+            polylineCoordinates.add(LatLng(coord[1], coord[0])); // Note: OSRM returns [lng, lat]
+          }
+
+          polylines.add(
+            Polyline(
+              polylineId: const PolylineId('driver_to_pickup'),
+              points: polylineCoordinates,
+              color: const Color(0xFF4285F4), // Google Maps Blue
+              width: 5,
+            ),
+          );
+
+          showPolyline.value = true;
+          update();
+
+          debugPrint('✅ Road-following polyline drawn (${polylineCoordinates.length} points)');
+        } else {
+          debugPrint('⚠️ No route found, falling back to straight line');
+          _drawStraightLine(driverLat, driverLng, pickupLat, pickupLng);
+        }
+      } else {
+        debugPrint('⚠️ OSRM API error, falling back to straight line');
+        _drawStraightLine(driverLat, driverLng, pickupLat, pickupLng);
+      }
+    } catch (e) {
+      debugPrint('❌ Error drawing polyline: $e, falling back to straight line');
+      _drawStraightLine(driverLat, driverLng, pickupLat, pickupLng);
+    }
+  }
+
+  // Fallback: draw simple straight line if OSRM fails
+  void _drawStraightLine(double driverLat, double driverLng, double pickupLat, double pickupLng) {
+    polylines.clear();
+
+    polylines.add(
+      Polyline(
+        polylineId: const PolylineId('driver_to_pickup'),
+        points: [
+          LatLng(driverLat, driverLng),
+          LatLng(pickupLat, pickupLng),
+        ],
+        color: const Color(0xFF4285F4), // Google Maps Blue
+        width: 5,
+      ),
+    );
+
+    showPolyline.value = true;
+    update();
+    debugPrint('✅ Straight line polyline drawn');
+  }
+
+  // Draw polyline from pickup to dropoff (FREE - using OSRM API)
+  Future<void> drawPolylineFromPickupToDropoff({
+    required double pickupLat,
+    required double pickupLng,
+    required double dropoffLat,
+    required double dropoffLng,
+  }) async {
+    try {
+      polylines.clear();
+
+      // Use OSRM (OpenStreetMap Routing Machine) - 100% FREE, no API key needed
+      final url = 'https://router.project-osrm.org/route/v1/driving/$pickupLng,$pickupLat;$dropoffLng,$dropoffLat?overview=full&geometries=geojson';
+
+      debugPrint('🚗 Fetching route from pickup to dropoff using OSRM...');
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['code'] == 'Ok' && data['routes'] != null && data['routes'].isNotEmpty) {
+          final route = data['routes'][0];
+          final geometry = route['geometry']['coordinates'] as List;
+
+          List<LatLng> polylineCoordinates = [];
+          for (var coord in geometry) {
+            polylineCoordinates.add(LatLng(coord[1], coord[0])); // Note: OSRM returns [lng, lat]
+          }
+
+          polylines.add(
+            Polyline(
+              polylineId: const PolylineId('pickup_to_dropoff'),
+              points: polylineCoordinates,
+              color: AppColors.primaryColor, // Use app primary color
+              width: 5,
+            ),
+          );
+
+          // Auto-fit camera to show entire route
+          final bounds = LatLngBounds(
+            southwest: LatLng(
+              pickupLat < dropoffLat ? pickupLat : dropoffLat,
+              pickupLng < dropoffLng ? pickupLng : dropoffLng,
+            ),
+            northeast: LatLng(
+              pickupLat > dropoffLat ? pickupLat : dropoffLat,
+              pickupLng > dropoffLng ? pickupLng : dropoffLng,
+            ),
+          );
+
+          myMapController?.animateCamera(
+            CameraUpdate.newLatLngBounds(bounds, 100),
+          );
+
+          showPolyline.value = true;
+          update();
+
+          debugPrint('✅ Pickup to dropoff polyline drawn (${polylineCoordinates.length} points)');
+        } else {
+          debugPrint('⚠️ No route found, falling back to straight line');
+          _drawStraightLinePickupToDropoff(pickupLat, pickupLng, dropoffLat, dropoffLng);
+        }
+      } else {
+        debugPrint('⚠️ OSRM API error, falling back to straight line');
+        _drawStraightLinePickupToDropoff(pickupLat, pickupLng, dropoffLat, dropoffLng);
+      }
+    } catch (e) {
+      debugPrint('❌ Error drawing polyline: $e, falling back to straight line');
+      _drawStraightLinePickupToDropoff(pickupLat, pickupLng, dropoffLat, dropoffLng);
+    }
+  }
+
+  // Fallback: draw simple straight line from pickup to dropoff if OSRM fails
+  void _drawStraightLinePickupToDropoff(double pickupLat, double pickupLng, double dropoffLat, double dropoffLng) {
+    polylines.clear();
+
+    polylines.add(
+      Polyline(
+        polylineId: const PolylineId('pickup_to_dropoff'),
+        points: [
+          LatLng(pickupLat, pickupLng),
+          LatLng(dropoffLat, dropoffLng),
+        ],
+        color: AppColors.primaryColor,
+        width: 5,
+      ),
+    );
+
+    showPolyline.value = true;
+    update();
+    debugPrint('✅ Straight line polyline drawn from pickup to dropoff');
   }
 }

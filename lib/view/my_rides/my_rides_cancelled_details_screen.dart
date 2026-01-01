@@ -5,11 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/my_rides_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/book_ride_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/driver_details_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/safety/safety_screen.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/controllers/my_rides_controller.dart';
+import 'package:tshl_tawsil/view/book_ride/book_ride_screen.dart';
+import 'package:tshl_tawsil/view/book_ride/driver_details_screen.dart';
+import 'package:tshl_tawsil/view/safety/safety_screen.dart';
 
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_colors.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
+import 'package:tshl_tawsil/config/app_colors.dart';
+import 'package:tshl_tawsil/config/app_size.dart';
 
 class CustomTextField extends StatelessWidget {
   final bool readOnly;

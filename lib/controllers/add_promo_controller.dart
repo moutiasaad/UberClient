@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
 
 class AddPromoController extends GetxController {
   RxInt selectedOfferIndex = 0.obs;

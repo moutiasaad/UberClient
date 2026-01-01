@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_icons.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/home_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/home/home_screen.dart';
+import 'package:tshl_tawsil/config/app_icons.dart';
+import 'package:tshl_tawsil/controllers/home_controller.dart';
+import 'package:tshl_tawsil/view/home/home_screen.dart';
 import '../config/app_strings.dart';
 import '../api/services/ride_service.dart';
 import '../api/client/api_client.dart';
@@ -49,8 +49,8 @@ class BookRideController extends GetxController {
   // Selected payment method
   RxString selectedPaymentMethod = 'cash'.obs;
 
-  // Selected time for ride
-  Rx<DateTime?> selectedTime = Rx<DateTime?>(null);
+  // Selected time for ride - default to current time + 10 minutes
+  Rx<DateTime?> selectedTime = Rx<DateTime?>(DateTime.now().add(const Duration(minutes: 10)));
 
   void selectInnerContainer(int index) {
     selectedInnerContainerIndex.value = index;
@@ -69,10 +69,26 @@ class BookRideController extends GetxController {
   String get formattedSelectedTime {
     if (selectedTime.value == null) return 'Select Time';
     final time = selectedTime.value!;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final selectedDate = DateTime(time.year, time.month, time.day);
+
+    String dayLabel;
+    if (selectedDate == today) {
+      dayLabel = 'Today';
+    } else if (selectedDate == tomorrow) {
+      dayLabel = 'Tomorrow';
+    } else {
+      // Format as "Dec 31"
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      dayLabel = '${months[time.month - 1]} ${time.day}';
+    }
+
     final hour = time.hour > 12 ? time.hour - 12 : (time.hour == 0 ? 12 : time.hour);
     final minute = time.minute.toString().padLeft(2, '0');
     final period = time.hour >= 12 ? 'PM' : 'AM';
-    return '$hour:$minute $period';
+    return '$dayLabel, $hour:$minute $period';
   }
 
   List<String> ridesImage = [
@@ -183,6 +199,15 @@ class BookRideController extends GetxController {
       currentRide.value = ride;
 
       Fluttertoast.showToast(msg: 'Ride requested successfully!');
+
+      // Reload home controller to fetch the new ride
+      try {
+        final homeController = Get.find<HomeController>();
+        await homeController.loadActiveRide();
+      } catch (e) {
+        // HomeController might not be initialized yet
+        debugPrint('HomeController not found: $e');
+      }
 
       // Navigate to searching driver screen
       Get.offAll(() => HomeScreen());

@@ -6,9 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/common_widgets/common_text_feild.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/profile_controller.dart';
+import 'package:tshl_tawsil/common_widgets/common_text_feild.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/controllers/profile_controller.dart';
+import 'package:tshl_tawsil/view/widget/delete_account_bottom_sheet.dart';
 import '../../common_widgets/common_width_sized_box.dart';
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';
@@ -25,6 +26,12 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     languageController.loadSelectedLanguage();
+
+    // Fetch latest profile data when screen is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      profileController.fetchProfile();
+    });
+
     return Center(
       child: Container(
         color: AppColors.backGroundColor,
@@ -34,36 +41,7 @@ class ProfileScreen extends StatelessWidget {
           appBar: _appBar(),
           body: _profileContent(context),
           floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-          floatingActionButton: GestureDetector(
-            onTap: () {
-              Get.back();
-            },
-            child: Container(
-            height: AppSize.size54,
-            margin: const EdgeInsets.only(
-              top: AppSize.size12,
-              left: AppSize.size20,
-              right: AppSize.size20,
-              bottom: AppSize.size20
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.blackTextColor,
-              borderRadius: BorderRadius.circular(
-                  AppSize.size10),
-            ),
-            child: const Center(
-              child: Text(
-                AppStrings.save,
-                style: TextStyle(
-                  fontSize: AppSize.size16,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: FontFamily.latoSemiBold,
-                  color: AppColors.backGroundColor,
-                ),
-              ),
-            ),
-                    ),
-          ),
+          floatingActionButton: _bottomButtons(context),
         ),
       ),
     );
@@ -340,61 +318,6 @@ class ProfileScreen extends StatelessWidget {
               ),
               child: CustomTextField(
                 readOnly: true,
-                controller: profileController.birthController,
-                hintText: AppStrings.birthOfDate,
-                hintFontSize: AppSize.size14,
-                hintColor: AppColors.smallTextColor,
-                hintTextColor: AppColors.smallTextColor,
-                fontFamily: FontFamily.latoRegular,
-                height: AppSize.size54,
-                fillColor: AppColors.backGroundColor,
-                cursorColor: AppColors.smallTextColor,
-                fillFontFamily: FontFamily.latoSemiBold,
-                fillFontWeight: FontWeight.w600,
-                fillFontSize: AppSize.size14,
-                fontWeight: FontWeight.w400,
-                fillTextColor: AppColors.blackTextColor,
-                suffixIcon: Obx(
-                  () => Padding(
-                    padding: EdgeInsets.only(
-                        right:
-                            languageController.arb.value ? 0 : AppSize.size10,
-                ),
-                    child: GestureDetector(
-                      onTap: () {
-                        profileController.selectDate(context);
-                      },
-                      child: Image.asset(
-                        AppIcons.calendarIcon,
-                      ),
-                    ),
-                  ),
-                ),
-                suffixIconConstraints: const BoxConstraints(
-                  maxWidth: AppSize.size30,
-                ),
-                contentPadding: const EdgeInsets.only(
-                    left: AppSize.size16,
-                    right: AppSize.size16,
-                    top: AppSize.size18,
-                    bottom: AppSize.size18),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: AppSize.size24),
-            child: Container(
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    spreadRadius: AppSize.opacity10,
-                    color:
-                        AppColors.blackTextColor.withOpacity(AppSize.opacity10),
-                    blurRadius: AppSize.size20,
-                  ),
-                ],
-              ),
-              child: CustomTextField(
                 controller: profileController.emailController,
                 hintText: AppStrings.enterEmail,
                 hintFontSize: AppSize.size14,
@@ -431,64 +354,101 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
           ),
-          const Padding(
-            padding:
-                EdgeInsets.only(top: AppSize.size24, bottom: AppSize.size10),
-            child: Text(
-              AppStrings.gender,
-              style: TextStyle(
-                fontWeight: FontWeight.w400,
-                fontFamily: FontFamily.latoRegular,
-                fontSize: AppSize.size14,
-                color: AppColors.smallTextColor,
+        ],
+      ),
+    );
+  }
+
+  _bottomButtons(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(
+        top: AppSize.size12,
+        left: AppSize.size20,
+        right: AppSize.size20,
+        bottom: AppSize.size20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Save Button
+          Obx(() => GestureDetector(
+            onTap: profileController.isLoading.value
+                ? null
+                : () async {
+                    await profileController.updateProfile();
+                    if (!profileController.isLoading.value) {
+                      // Show success notification from top
+                      Get.snackbar(
+                        'Success',
+                        'Profile updated successfully',
+                        backgroundColor: Colors.green,
+                        colorText: Colors.white,
+                        snackPosition: SnackPosition.TOP,
+                        margin: const EdgeInsets.all(AppSize.size16),
+                        borderRadius: AppSize.size10,
+                        duration: const Duration(seconds: 2),
+                      );
+                    }
+                  },
+            child: Container(
+              height: AppSize.size54,
+              decoration: BoxDecoration(
+                color: profileController.isLoading.value
+                    ? AppColors.smallTextColor
+                    : AppColors.blackTextColor,
+                borderRadius: BorderRadius.circular(AppSize.size10),
+              ),
+              child: Center(
+                child: profileController.isLoading.value
+                    ? const SizedBox(
+                        height: AppSize.size20,
+                        width: AppSize.size20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.backGroundColor,
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        AppStrings.save,
+                        style: TextStyle(
+                          fontSize: AppSize.size16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: FontFamily.latoSemiBold,
+                          color: AppColors.backGroundColor,
+                        ),
+                      ),
               ),
             ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(AppSize.three, (index) {
-              return Obx(() => GestureDetector(
-                    onTap: () {
-                      profileController.setSelectedIndex(index);
-                    },
-                    child: Container(
-                      width: AppSize.size99,
-                      height: AppSize.size44,
-                      decoration: BoxDecoration(
-                        color: AppColors.backGroundColor,
-                        borderRadius: BorderRadius.circular(AppSize.size8),
-                        border: Border.all(
-                          color: index == profileController.selectedIndex.value
-                              ? AppColors.primaryColor
-                              : AppColors.smallTextColor
-                                  .withOpacity(AppSize.opacity20),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            spreadRadius: AppSize.opacity10,
-                            color: AppColors.blackTextColor
-                                .withOpacity(AppSize.opacity10),
-                            blurRadius: AppSize.size20,
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          profileController.genderList[index],
-                          style: TextStyle(
-                            fontSize: AppSize.size14,
-                            fontFamily: FontFamily.latoMedium,
-                            fontWeight: FontWeight.w500,
-                            color:
-                                index == profileController.selectedIndex.value
-                                    ? AppColors.primaryColor
-                                    : AppColors.blackTextColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ));
-            }),
+          )),
+          const SizedBox(height: AppSize.size16),
+          // Delete Account Button
+          GestureDetector(
+            onTap: () {
+              deleteAccountBottomSheet(context);
+            },
+            child: Container(
+              height: AppSize.size54,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppSize.size10),
+                border: Border.all(
+                  color: Colors.red,
+                  width: AppSize.size1,
+                ),
+              ),
+              child: const Center(
+                child: Text(
+                  'Delete Account',
+                  style: TextStyle(
+                    fontSize: AppSize.size16,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: FontFamily.latoSemiBold,
+                    color: Colors.red,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

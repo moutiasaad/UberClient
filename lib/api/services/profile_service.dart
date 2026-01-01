@@ -16,21 +16,28 @@ class ProfileService {
     return UserModel.fromJson(userJson);
   }
 
-  // Update Profile
+  // Update Profile with multipart PUT (name, phone, and optional image)
   Future<UserModel> updateProfile({
-    String? name,
-    String? email,
-    String? language,
+    required String name,
+    required String phone,
+    String? imagePath,
   }) async {
     try {
-      final body = <String, dynamic>{};
-      if (name != null) body['name'] = name;
-      if (email != null) body['email'] = email;
-      if (language != null) body['language'] = language;
+      final fields = <String, String>{
+        'name': name,
+        'phone': phone,
+      };
 
-      final response = await _apiClient.put(
+      final files = <String, String>{};
+      if (imagePath != null && imagePath.isNotEmpty) {
+        files['image'] = imagePath;
+      }
+
+      final response = await _apiClient.multipart(
         ApiConstants.customerProfile,
-        body: body,
+        'PUT',
+        fields: fields,
+        files: files,
         requiresAuth: true,
       );
 
@@ -62,6 +69,18 @@ class ProfileService {
       await _apiClient.put(
         ApiConstants.customerFcmToken,
         body: {'fcm_token': fcmToken},
+        requiresAuth: true,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Delete Account
+  Future<void> deleteAccount() async {
+    try {
+      await _apiClient.delete(
+        ApiConstants.customerProfile,
         requiresAuth: true,
       );
     } catch (e) {

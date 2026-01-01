@@ -1,40 +1,83 @@
 // ignore_for_file: deprecated_member_use
 
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:prime_taxi_flutter_ui_kit/common_widgets/common_height_sized_box.dart';
-import 'package:prime_taxi_flutter_ui_kit/common_widgets/common_width_sized_box.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_colors.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_icons.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_images.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/font_family.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/home_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/models/ride_model.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/destination/destination_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/destination/select_route_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/destination/select_route_with_map.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/my_rides/my_rides_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/my_rides/my_rides_active_details_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/payments/payments_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/profile/profile_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/safety/safety_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/save_locations/save_locations_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/settings/settings_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/widget/logout_bottom_sheet.dart';
+import 'package:tshl_tawsil/common_widgets/common_height_sized_box.dart';
+import 'package:tshl_tawsil/common_widgets/common_width_sized_box.dart';
+import 'package:tshl_tawsil/config/app_colors.dart';
+import 'package:tshl_tawsil/config/app_icons.dart';
+import 'package:tshl_tawsil/config/app_images.dart';
+import 'package:tshl_tawsil/config/app_size.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
+import 'package:tshl_tawsil/config/font_family.dart';
+import 'package:tshl_tawsil/controllers/home_controller.dart';
+import 'package:tshl_tawsil/models/ride_model.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/view/destination/destination_screen.dart';
+import 'package:tshl_tawsil/view/destination/select_route_screen.dart';
+import 'package:tshl_tawsil/view/destination/select_route_with_map.dart';
+import 'package:tshl_tawsil/view/my_rides/my_rides_screen.dart';
+import 'package:tshl_tawsil/view/my_rides/my_rides_active_details_screen.dart';
+import 'package:tshl_tawsil/view/points/points_screen.dart';
+import 'package:tshl_tawsil/view/profile/profile_screen.dart';
+import 'package:tshl_tawsil/view/safety/safety_screen.dart';
+import 'package:tshl_tawsil/view/settings/settings_screen.dart';
+import 'package:tshl_tawsil/view/widget/logout_bottom_sheet.dart';
+import 'package:tshl_tawsil/api/services/profile_service.dart';
+import 'package:tshl_tawsil/models/user_model.dart';
 
 import '../../common_widgets/common_text_feild.dart';
 
-class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   final HomeController homeController = Get.find<HomeController>();
-
   final LanguageController languageController = Get.put(LanguageController());
+  final ProfileService _profileService = ProfileService();
+  UserModel? _currentUser;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+    _startAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
+      if (mounted) {
+        homeController.loadActiveRide();
+      }
+    });
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final user = await _profileService.getProfile();
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user profile: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,26 +145,37 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                           const CommonWidthSizedBox(width: AppSize.size10),
-                          const Column(
-                            children: [
-                              Text(
-                                AppStrings.helloAlbert,
-                                style: TextStyle(
-                                  color: AppColors.blackTextColor,
-                                  fontFamily: FontFamily.latoBold,
-                                  fontSize: AppSize.size16,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _currentUser != null
+                                      ? 'Hello, ${_currentUser!.name}'
+                                      : AppStrings.helloAlbert,
+                                  style: const TextStyle(
+                                    color: AppColors.blackTextColor,
+                                    fontFamily: FontFamily.latoBold,
+                                    fontSize: AppSize.size16,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              CommonHeightSizedBox(height: AppSize.size6),
-                              Text(
-                                AppStrings.demoMobile,
-                                style: TextStyle(
-                                  color: AppColors.smallTextColor,
-                                  fontFamily: FontFamily.latoRegular,
-                                  fontSize: AppSize.size12,
-                                ),
-                              )
-                            ],
+                                const CommonHeightSizedBox(height: AppSize.size6),
+                                Text(
+                                  _currentUser != null
+                                      ? _currentUser!.phone
+                                      : AppStrings.demoMobile,
+                                  style: const TextStyle(
+                                    color: AppColors.smallTextColor,
+                                    fontFamily: FontFamily.latoRegular,
+                                    fontSize: AppSize.size12,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                )
+                              ],
+                            ),
                           )
                         ],
                       ),
@@ -133,9 +187,7 @@ class HomeScreen extends StatelessWidget {
                 const CommonHeightSizedBox(height: AppSize.size24),
                 _buildMyRides(),
                 const CommonHeightSizedBox(height: AppSize.size24),
-                _buildPayments(),
-                const CommonHeightSizedBox(height: AppSize.size24),
-                _buildSaveLocations(),
+                _buildPoints(),
                 const CommonHeightSizedBox(height: AppSize.size24),
                 _buildSafety(),
                 const CommonHeightSizedBox(height: AppSize.size24),
@@ -280,6 +332,17 @@ class HomeScreen extends StatelessWidget {
                                   fillFontSize: AppSize.size12,
                                   fontWeight: FontWeight.w400,
                                   fillTextColor: AppColors.blackTextColor,
+                                  readOnly: true, // Make field read-only to prevent typing
+                                  onTap: () {
+                                    // Only navigate to book ride if there's NO active ride
+                                    if (homeController.activeRide.value == null) {
+                                      Get.to(() => SelectRouteWithMapScreen(
+                                        pickupAddress: homeController.userAddress.value,
+                                        destinationAddress: '',
+                                      ));
+                                    }
+                                    // If there IS an active ride, do nothing
+                                  },
                                   suffixIcon: Obx(
                                     () => Padding(
                                       padding: EdgeInsets.only(
@@ -339,6 +402,37 @@ class HomeScreen extends StatelessWidget {
                                       top: AppSize.size10,
                                       bottom: AppSize.size10),
                                 ),
+                              ),
+                            ),
+                          ),
+                          const CommonWidthSizedBox(width: AppSize.size12),
+                          Padding(
+                            padding: const EdgeInsets.only(top: AppSize.size12),
+                            child: GestureDetector(
+                              onTap: () {
+                                Get.to(() => const MyRidesScreen());
+                              },
+                              child: Container(
+                                height: AppSize.size46,
+                                width: AppSize.size46,
+                                decoration: BoxDecoration(
+                                    color: AppColors.backGroundColor,
+                                    borderRadius: BorderRadius.circular(
+                                        AppSize.size10),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.shadow,
+                                        blurRadius: AppSize.size66,
+                                        spreadRadius: AppSize.size0,
+                                      )
+                                    ]),
+                                child: Center(
+                                    child: Image.asset(
+                                  AppIcons.search,
+                                  height: AppSize.size20,
+                                  width: AppSize.size20,
+                                  color: AppColors.blackTextColor,
+                                )),
                               ),
                             ),
                           )
@@ -727,12 +821,12 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Padding _buildPayments() {
+  Padding _buildPoints() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSize.size32),
       child: GestureDetector(
         onTap: () {
-          Get.to(() => PaymentsScreen());
+          Get.to(() => const PointsScreen());
         },
         child: Row(
           children: [
@@ -743,50 +837,14 @@ class HomeScreen extends StatelessWidget {
                   color: AppColors.lightTheme, shape: BoxShape.circle),
               child: Center(
                   child: Image.asset(
-                AppIcons.payment,
+                AppIcons.dollarIcon,
                 height: AppSize.size14,
                 width: AppSize.size14,
               )),
             ),
             const CommonWidthSizedBox(width: AppSize.size8),
             const Text(
-              AppStrings.payment,
-              style: TextStyle(
-                color: AppColors.blackTextColor,
-                fontFamily: FontFamily.latoSemiBold,
-                fontSize: AppSize.size16,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Padding _buildSaveLocations() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSize.size32),
-      child: GestureDetector(
-        onTap: () {
-          Get.to(() => SaveLocationsScreen());
-        },
-        child: Row(
-          children: [
-            Container(
-              height: AppSize.size24,
-              width: AppSize.size24,
-              decoration: const BoxDecoration(
-                  color: AppColors.lightTheme, shape: BoxShape.circle),
-              child: Center(
-                  child: Image.asset(
-                AppIcons.bookMark,
-                height: AppSize.size14,
-                width: AppSize.size14,
-              )),
-            ),
-            const CommonWidthSizedBox(width: AppSize.size8),
-            const Text(
-              AppStrings.saveLocations,
+              'Points',
               style: TextStyle(
                 color: AppColors.blackTextColor,
                 fontFamily: FontFamily.latoSemiBold,
@@ -1104,8 +1162,8 @@ class HomeScreen extends StatelessWidget {
       child: Column(
         children: [
           Image.asset(
-            AppIcons.carIcon,
-            width: AppSize.size48,
+            AppIcons.carModelIcon,
+            width: AppSize.size80,
             color: AppColors.smallTextColor,
           ),
           const SizedBox(height: AppSize.size12),

@@ -4,11 +4,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/settings_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/settings/help_center_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/settings/language_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/settings/privacy_policy_screen.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/controllers/settings_controller.dart';
+import 'package:tshl_tawsil/view/settings/help_center_screen.dart';
+import 'package:tshl_tawsil/view/settings/language_screen.dart';
+import 'package:tshl_tawsil/view/settings/privacy_policy_screen.dart';
 
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';
@@ -106,43 +106,9 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _customPreferences(
-                  () {}, AppIcons.darkModeIcon, AppStrings.darkMode.tr),
-              Container(
-                width: AppSize.size30,
-                decoration: BoxDecoration(boxShadow: [
-                  BoxShadow(
-                    spreadRadius: AppSize.size1,
-                    color:
-                        AppColors.blackTextColor.withOpacity(AppSize.opacity10),
-                    blurRadius: AppSize.size14,
-                  ),
-                ]),
-                child: GestureDetector(
-                  onTap: () {
-                    settingsController.isSwitched.value =
-                        !settingsController.isSwitched.value;
-                  },
-                  child: Obx(() => Image.asset(
-                        settingsController.isSwitched.value
-                            ? AppIcons.switchOn
-                            : AppIcons.switchOff,
-                        width: AppSize.size30,
-                      )),
-                ),
-              ),
-            ],
-          ),
           _customPreferences(() {
             Get.to(() => LanguageScreen());
           }, AppIcons.languageIcon, AppStrings.language.tr),
-          _customPreferences(() {
-            Get.to(() => const PrivacyPolicyScreen());
-          }, AppIcons.privacyPolicyIcon, AppStrings.privacyPolicy.tr),
           _customPreferences(() {
             Get.to(() => HelpCenterScreen());
           }, AppIcons.helpCenterIcon, AppStrings.helpCenter.tr),

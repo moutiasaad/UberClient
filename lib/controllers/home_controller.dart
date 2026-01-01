@@ -10,12 +10,12 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:prime_taxi_flutter_ui_kit/api/services/ride_service.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_icons.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
+import 'package:tshl_tawsil/api/services/ride_service.dart';
+import 'package:tshl_tawsil/config/app_icons.dart';
+import 'package:tshl_tawsil/config/app_size.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
 import 'package:http/http.dart' as http;
-import 'package:prime_taxi_flutter_ui_kit/models/ride_model.dart';
+import 'package:tshl_tawsil/models/ride_model.dart';
 
 import '../api/map_service.dart';
 

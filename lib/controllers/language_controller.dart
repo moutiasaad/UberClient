@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/storage_controller.dart';
+import 'package:tshl_tawsil/controllers/storage_controller.dart';
 
 class LanguageController extends GetxController {
   @override

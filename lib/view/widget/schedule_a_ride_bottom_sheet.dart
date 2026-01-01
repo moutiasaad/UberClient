@@ -4,12 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_colors.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/font_family.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/book_ride_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/schedule_a_ride_controller.dart';
+import 'package:tshl_tawsil/config/app_colors.dart';
+import 'package:tshl_tawsil/config/app_size.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
+import 'package:tshl_tawsil/config/font_family.dart';
+import 'package:tshl_tawsil/controllers/book_ride_controller.dart';
+import 'package:tshl_tawsil/controllers/schedule_a_ride_controller.dart';
 
 scheduleARideBottomSheet(BuildContext context) {
   ScheduleARideController scheduleARideController =

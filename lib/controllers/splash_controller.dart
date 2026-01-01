@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
-import 'package:prime_taxi_flutter_ui_kit/api/services/auth_service.dart';
-import 'package:prime_taxi_flutter_ui_kit/api/services/profile_service.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/home_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/welcome/welcome_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/home/home_screen.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/create_profile/create_profile_screen.dart';
+import 'package:tshl_tawsil/config/app_size.dart';
+import 'package:tshl_tawsil/api/services/auth_service.dart';
+import 'package:tshl_tawsil/api/services/profile_service.dart';
+import 'package:tshl_tawsil/controllers/home_controller.dart';
+import 'package:tshl_tawsil/view/welcome/welcome_screen.dart';
+import 'package:tshl_tawsil/view/home/home_screen.dart';
+import 'package:tshl_tawsil/view/create_profile/create_profile_screen.dart';
 
 class SplashController extends GetxController {
   final AuthService _authService = AuthService();

@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/home/home_screen.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
+import 'package:tshl_tawsil/view/home/home_screen.dart';
 
 import '../config/app_size.dart';
 import '../api/services/auth_service.dart';

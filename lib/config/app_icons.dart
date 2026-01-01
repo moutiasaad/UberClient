@@ -1,5 +1,5 @@
 class AppIcons {
-  static const String splashLogo = "assets/icons/splash_logo.png";
+  static const String splashLogo = "assets/icons/app_icon.png";
   static const String arrowRight = "assets/icons/arrow_right.png";
   static const String arrowBack = "assets/icons/arrow_back.png";
   static const String arrowDown = "assets/icons/arrow_down.png";

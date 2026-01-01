@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
 
 class MapServices {
   Future<dynamic> nearByPlaceDetailsAPI(

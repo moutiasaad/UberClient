@@ -10,13 +10,13 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:prime_taxi_flutter_ui_kit/api/map_service.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_colors.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_icons.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
+import 'package:tshl_tawsil/api/map_service.dart';
+import 'package:tshl_tawsil/config/app_colors.dart';
+import 'package:tshl_tawsil/config/app_icons.dart';
+import 'package:tshl_tawsil/config/app_size.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
 import 'package:http/http.dart' as http;
-import 'package:prime_taxi_flutter_ui_kit/controllers/home_controller.dart';
+import 'package:tshl_tawsil/controllers/home_controller.dart';
 
 HomeController homeController = Get.put(HomeController());
 
@@ -50,7 +50,7 @@ class SelectRouteWithMapController extends GetxController {
   BitmapDescriptor? customMarker;
   final MarkerId markerId = const MarkerId(AppStrings.currentLocation);
   // Default to Qatar (Doha)
-  LatLng? selectedDestination;
+  Rx<LatLng?> selectedDestination = Rx<LatLng?>(null);
   GoogleMapController? myMapController;
   RxBool isSwapped = false.obs;
   RxList<Widget> routeListTiles = <Widget>[].obs;
@@ -63,7 +63,7 @@ class SelectRouteWithMapController extends GetxController {
   TextEditingController locationController =
       TextEditingController(text: homeController.userAddress.value);
   TextEditingController destinationController =
-      TextEditingController(text: AppStrings.templeDestination);
+      TextEditingController(text: '');
   TextEditingController addStopController =
       TextEditingController(text: AppStrings.stopDestination);
   RxSet<Polyline> polylines = <Polyline>{}.obs;
@@ -77,6 +77,7 @@ class SelectRouteWithMapController extends GetxController {
   Timer? timer;
 
   // 0 = pickup field, 1 = destination field
+  // Default to destination (1) so map clicks set destination
   RxInt activeFieldIndex = 1.obs;
 
   // Current zoom level
@@ -123,6 +124,9 @@ class SelectRouteWithMapController extends GetxController {
       update();
     });
 
+    // Set active field to destination by default so map clicks set destination
+    activeFieldIndex.value = 1;
+
     // Add listeners for text controllers
     locationController.addListener(_onPickupTextChanged);
     destinationController.addListener(_onDestinationTextChanged);
@@ -141,13 +145,13 @@ class SelectRouteWithMapController extends GetxController {
     super.onClose();
   }
 
-  // Handle pickup text changes with debounce
+  // Handle pickup text changes with debounce - IMPROVED: Faster response time
   void _onPickupTextChanged() {
     // Skip if we're programmatically setting text after selection
     if (_isSelectingPlace) return;
 
     if (_pickupDebounce?.isActive ?? false) _pickupDebounce!.cancel();
-    _pickupDebounce = Timer(const Duration(milliseconds: 500), () {
+    _pickupDebounce = Timer(const Duration(milliseconds: 250), () {
       final query = locationController.text;
       if (query.length >= 2) {
         searchPlaces(query, isPickup: true);
@@ -158,13 +162,13 @@ class SelectRouteWithMapController extends GetxController {
     });
   }
 
-  // Handle destination text changes with debounce
+  // Handle destination text changes with debounce - IMPROVED: Faster response time
   void _onDestinationTextChanged() {
     // Skip if we're programmatically setting text after selection
     if (_isSelectingPlace) return;
 
     if (_destinationDebounce?.isActive ?? false) _destinationDebounce!.cancel();
-    _destinationDebounce = Timer(const Duration(milliseconds: 500), () {
+    _destinationDebounce = Timer(const Duration(milliseconds: 250), () {
       final query = destinationController.text;
       if (query.length >= 2) {
         searchPlaces(query, isPickup: false);
@@ -174,66 +178,94 @@ class SelectRouteWithMapController extends GetxController {
       }
     });
   }
+  // Draw polyline using FREE OSRM API (no API key required)
   Future<void> drawRoute(LatLng origin, LatLng destination) async {
     try {
-      final result = await polylinePoints.getRouteBetweenCoordinates(
-        request: PolylineRequest(
-          origin: PointLatLng(origin.latitude, origin.longitude),
-          destination: PointLatLng(destination.latitude, destination.longitude),
-          mode: TravelMode.driving,
-        ),
-      );
+      polylines.clear();
 
-      if (result.points.isEmpty) {
+      // Use OSRM (OpenStreetMap Routing Machine) - 100% FREE, no API key needed
+      final url = 'https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson';
+
+      debugPrint('🚗 Fetching route from OSRM...');
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['routes'] != null && data['routes'].isNotEmpty) {
+          final geometry = data['routes'][0]['geometry']['coordinates'];
+
+          List<LatLng> polylineCoordinates = [];
+          for (var coord in geometry) {
+            polylineCoordinates.add(LatLng(coord[1], coord[0])); // Note: OSRM returns [lng, lat]
+          }
+
+          polylines.add(
+            Polyline(
+              polylineId: const PolylineId('route'),
+              color: AppColors.primaryColor,
+              width: 5,
+              points: polylineCoordinates,
+            ),
+          );
+
+          showPolyline.value = true;
+          polylines.refresh();
+
+          // Auto-fit camera to show entire route
+          final bounds = LatLngBounds(
+            southwest: LatLng(
+              origin.latitude < destination.latitude
+                  ? origin.latitude
+                  : destination.latitude,
+              origin.longitude < destination.longitude
+                  ? origin.longitude
+                  : destination.longitude,
+            ),
+            northeast: LatLng(
+              origin.latitude > destination.latitude
+                  ? origin.latitude
+                  : destination.latitude,
+              origin.longitude > destination.longitude
+                  ? origin.longitude
+                  : destination.longitude,
+            ),
+          );
+
+          myMapController?.animateCamera(
+            CameraUpdate.newLatLngBounds(bounds, 100),
+          );
+
+          debugPrint('✅ Route drawn successfully with ${polylineCoordinates.length} points');
+        } else {
+          showPolyline.value = false;
+          debugPrint('⚠️ No route found, falling back to straight line');
+          _drawStraightLine(origin, destination);
+        }
+      } else {
         showPolyline.value = false;
-        return;
+        debugPrint('⚠️ OSRM API error, falling back to straight line');
+        _drawStraightLine(origin, destination);
       }
-
-      final routePoints = result.points
-          .map((p) => LatLng(p.latitude, p.longitude))
-          .toList();
-
-      polylines
-        ..clear()
-        ..add(
-          Polyline(
-            polylineId: const PolylineId('route'),
-            color: AppColors.primaryColor,
-            width: 5,
-            points: routePoints,
-          ),
-        );
-
-      showPolyline.value = true;
-      polylines.refresh();
-
-      // Auto-fit camera
-      final bounds = LatLngBounds(
-        southwest: LatLng(
-          origin.latitude < destination.latitude
-              ? origin.latitude
-              : destination.latitude,
-          origin.longitude < destination.longitude
-              ? origin.longitude
-              : destination.longitude,
-        ),
-        northeast: LatLng(
-          origin.latitude > destination.latitude
-              ? origin.latitude
-              : destination.latitude,
-          origin.longitude > destination.longitude
-              ? origin.longitude
-              : destination.longitude,
-        ),
-      );
-
-      myMapController?.animateCamera(
-        CameraUpdate.newLatLngBounds(bounds, 80),
-      );
     } catch (e) {
       showPolyline.value = false;
-      debugPrint('Route error: $e');
+      debugPrint('❌ Route error: $e');
+      _drawStraightLine(origin, destination);
     }
+  }
+
+  // Fallback: draw simple straight line if OSRM fails
+  void _drawStraightLine(LatLng origin, LatLng destination) {
+    polylines.clear();
+    polylines.add(
+      Polyline(
+        polylineId: const PolylineId('route'),
+        color: AppColors.primaryColor,
+        width: 5,
+        points: [origin, destination],
+      ),
+    );
+    showPolyline.value = true;
+    polylines.refresh();
   }
 
   // Search places using Google Places Autocomplete API
@@ -314,12 +346,12 @@ class SelectRouteWithMapController extends GetxController {
         place.description,
         BitmapDescriptor.fromBytes(await getBytesFromAsset(
             path: 'assets/icons/pickup_marker.png',
-            height: 80,
-            width: 80)),
+            height: 150,
+            width: 150)),
       );
     } else {
       destinationController.text = place.description;
-      selectedDestination = latLng;
+      selectedDestination.value = latLng;
 
       markers.removeWhere(
               (m) => m.markerId.value == AppStrings.destinationMarker);
@@ -330,18 +362,27 @@ class SelectRouteWithMapController extends GetxController {
         place.description,
         BitmapDescriptor.fromBytes(await getBytesFromAsset(
             path: 'assets/icons/destination_marker.png',
-            height: 80,
-            width: 80)),
+            height: 120,
+            width: 120)),
       );
     }
 
-    // ✅ DRAW ROUTE WHEN BOTH EXIST
-    if (selectedDestination != null) {
-      await drawRoute(initialLocation.value, selectedDestination!);
-    } else {
-      myMapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(latLng, 15),
-      );
+    // ✅ IMPROVED: ALWAYS ANIMATE TO SELECTED LOCATION FIRST, THEN DRAW ROUTE
+    // First, zoom to the newly selected location
+    await myMapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(latLng, 15),
+    );
+
+    // Small delay to let the camera animation complete
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Then, if both points are set, draw the route and fit both markers
+    if (isPickup && selectedDestination.value != null) {
+      // Pickup was selected and destination already exists - draw route and animate to show both
+      await drawRoute(initialLocation.value, selectedDestination.value!);
+    } else if (!isPickup) {
+      // Destination was selected - always draw route from pickup
+      await drawRoute(initialLocation.value, selectedDestination.value!);
     }
 
     _isSelectingPlace = false;
@@ -434,18 +475,29 @@ class SelectRouteWithMapController extends GetxController {
 
       latitude.value = position.latitude;
       longitude.value = position.longitude;
+
+      // Set pickup location to current location automatically
+      initialLocation.value = LatLng(latitude.value, longitude.value);
+
+      // Add green pickup marker at current location
+      markers.removeWhere((m) => m.markerId.value == 'pickup_marker');
       addCustomMarker(
         LatLng(latitude.value, longitude.value),
-        AppStrings.currentLocation,
-        '',
+        'pickup_marker',
+        'Pickup',
         '',
         BitmapDescriptor.fromBytes(await getBytesFromAsset(
-            path: AppIcons.myPointIcon,
-            height: AppSize.size80.toInt(),
-            width: AppSize.size80.toInt())),
+            path: 'assets/icons/pickup_marker.png',
+            height: 150,
+            width: 150)),
       );
-      await _getCurrentAddress(latitude.value, longitude.value);
-      initialLocation.value = LatLng(latitude.value, longitude.value);
+
+      // Get address and set it in the pickup field
+      _isSelectingPlace = true;  // Prevent search from triggering
+      final address = await _getCurrentAddress(latitude.value, longitude.value);
+      locationController.text = address;
+      _isSelectingPlace = false;  // Re-enable search
+
       update();
     } catch (e) {
       print('Error getting location: $e');
@@ -554,8 +606,8 @@ class SelectRouteWithMapController extends GetxController {
   }
 
   void addPolylineToDestination() async {
-    if (selectedDestination != null) {
-      LatLng destinationLatLng = selectedDestination!;
+    if (selectedDestination.value != null) {
+      LatLng destinationLatLng = selectedDestination.value!;
       polylines.clear();
       markers.removeWhere(
           (marker) => marker.markerId.value == AppStrings.destinationMarker);
@@ -566,8 +618,8 @@ class SelectRouteWithMapController extends GetxController {
         AppStrings.yourDestination,
         BitmapDescriptor.fromBytes(await getBytesFromAsset(
             path: 'assets/icons/destination_marker.png',
-            height: 80,
-            width: 80)),
+            height: 120,
+            width: 120)),
       );
       await calculateRouteAndDrawPolyline(
         destinationLatLng,
@@ -580,39 +632,7 @@ class SelectRouteWithMapController extends GetxController {
   Future<void> calculateRouteAndDrawPolyline(
     LatLng destination,
   ) async {
-    try {
-      PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-        request: PolylineRequest(
-            destination:
-                PointLatLng(destination.latitude, destination.longitude),
-            origin: PointLatLng(initialLocation.value.latitude, initialLocation.value.longitude),
-            mode: TravelMode.driving),
-        //googleApiKey: "AIzaSyAgrMwwCZlfp8Updk7wpl0oBihrvG4QfNc",
-      );
-
-      if (result.points.isNotEmpty) {
-        List<LatLng> polylineCoordinates = result.points
-            .map((PointLatLng point) => LatLng(point.latitude, point.longitude))
-            .toList();
-
-        Polyline polyline = Polyline(
-          polylineId: const PolylineId(AppStrings.route),
-          color: AppColors.primaryColor,
-          points: polylineCoordinates,
-          width: 5,
-        );
-        polylines.clear();
-        polylines.add(polyline);
-        showPolyline.value = true;
-        polylines.refresh();
-        update();
-      } else {
-        showPolyline.value = false;
-      }
-    } catch (e) {
-      showPolyline.value = false;
-      print('Route calculation error: $e');
-    }
+    await drawRoute(initialLocation.value, destination);
   }
 
   void swapItems() {
@@ -625,17 +645,17 @@ class SelectRouteWithMapController extends GetxController {
     final tempLocation = initialLocation.value;
     final tempAddress = locationController.text;
 
-    initialLocation.value = selectedDestination ?? const LatLng(0, 0);
+    initialLocation.value = selectedDestination.value ?? const LatLng(0, 0);
     locationController.text = destinationController.text;
 
-    selectedDestination = tempLocation;
+    selectedDestination.value = tempLocation;
     destinationController.text = tempAddress;
 
     isSwapped.value = !isSwapped.value;
 
     // Redraw polyline
     if (_isPickupSet() && _isDestinationSet()) {
-      calculateRouteFromAddresses(initialLocation.value, selectedDestination!);
+      calculateRouteFromAddresses(initialLocation.value, selectedDestination.value!);
     }
   }
 
@@ -669,12 +689,12 @@ class SelectRouteWithMapController extends GetxController {
         address,
         BitmapDescriptor.fromBytes(await getBytesFromAsset(
             path: 'assets/icons/pickup_marker.png',
-            height: 80,
-            width: 80)),
+            height: 150,
+            width: 150)),
       );
     } else {
       destinationController.text = address;
-      selectedDestination = tappedLocation;
+      selectedDestination.value = tappedLocation;
 
       markers.removeWhere(
               (m) => m.markerId.value == AppStrings.destinationMarker);
@@ -685,13 +705,14 @@ class SelectRouteWithMapController extends GetxController {
         address,
         BitmapDescriptor.fromBytes(await getBytesFromAsset(
             path: 'assets/icons/destination_marker.png',
-            height: 80,
-            width: 80)),
+            height: 120,
+            width: 120)),
       );
     }
 
-    if (selectedDestination != null) {
-      await drawRoute(initialLocation.value, selectedDestination!);
+    // ✅ IMPROVED: Always draw route when both points are set (from map tap)
+    if (selectedDestination.value != null && initialLocation.value.latitude != 25.2854) {
+      await drawRoute(initialLocation.value, selectedDestination.value!);
     }
 
     _isSelectingPlace = false;
@@ -707,9 +728,9 @@ class SelectRouteWithMapController extends GetxController {
 
   // Check if destination has been set by user
   bool _isDestinationSet() {
-    return selectedDestination != null &&
-           (selectedDestination!.latitude != 25.2854 ||
-            selectedDestination!.longitude != 51.5310);
+    return selectedDestination.value != null &&
+           (selectedDestination.value!.latitude != 25.2854 ||
+            selectedDestination.value!.longitude != 51.5310);
   }
 
   // Reverse geocode - get address from LatLng
@@ -750,8 +771,8 @@ class SelectRouteWithMapController extends GetxController {
           pickupAddress,
           BitmapDescriptor.fromBytes(await getBytesFromAsset(
               path: 'assets/icons/pickup_marker.png',
-              height: 80,
-              width: 80)),
+              height: 150,
+              width: 150)),
         );
         // Move camera to pickup location
         myMapController?.animateCamera(
@@ -764,7 +785,7 @@ class SelectRouteWithMapController extends GetxController {
     if (destinationAddress != null && destinationAddress.isNotEmpty) {
       LatLng? destLatLng = await _geocodeAddress(destinationAddress);
       if (destLatLng != null) {
-        selectedDestination = destLatLng;
+        selectedDestination.value = destLatLng;
         markers.removeWhere((marker) => marker.markerId.value == AppStrings.destinationMarker);
         addCustomMarker(
           destLatLng,
@@ -773,8 +794,8 @@ class SelectRouteWithMapController extends GetxController {
           destinationAddress,
           BitmapDescriptor.fromBytes(await getBytesFromAsset(
               path: 'assets/icons/destination_marker.png',
-              height: 80,
-              width: 80)),
+              height: 150,
+              width: 150)),
         );
 
         // Draw polyline between pickup and destination
@@ -813,50 +834,7 @@ class SelectRouteWithMapController extends GetxController {
 
   // Calculate route between two LatLng points
   Future<void> calculateRouteFromAddresses(LatLng origin, LatLng destination) async {
-    try {
-      PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-        request: PolylineRequest(
-            destination: PointLatLng(destination.latitude, destination.longitude),
-            origin: PointLatLng(origin.latitude, origin.longitude),
-            mode: TravelMode.driving),
-      );
-
-      if (result.points.isNotEmpty) {
-        List<LatLng> polylineCoordinates = result.points
-            .map((PointLatLng point) => LatLng(point.latitude, point.longitude))
-            .toList();
-
-        Polyline polyline = Polyline(
-          polylineId: const PolylineId(AppStrings.route),
-          color: AppColors.primaryColor,
-          points: polylineCoordinates,
-          width: 5,
-        );
-        polylines.clear();
-        polylines.add(polyline);
-        showPolyline.value = true;
-        polylines.refresh();
-        update();
-
-        // Fit camera to show both markers
-        LatLngBounds bounds = LatLngBounds(
-          southwest: LatLng(
-            origin.latitude < destination.latitude ? origin.latitude : destination.latitude,
-            origin.longitude < destination.longitude ? origin.longitude : destination.longitude,
-          ),
-          northeast: LatLng(
-            origin.latitude > destination.latitude ? origin.latitude : destination.latitude,
-            origin.longitude > destination.longitude ? origin.longitude : destination.longitude,
-          ),
-        );
-        myMapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
-      } else {
-        showPolyline.value = false;
-      }
-    } catch (e) {
-      showPolyline.value = false;
-      print('Route calculation error: $e');
-    }
+    await drawRoute(origin, destination);
   }
 
   // Use current location for pickup
@@ -907,6 +885,8 @@ class SelectRouteWithMapController extends GetxController {
   }
 
   Future<void> _setPickupFromLocation(double lat, double lng) async {
+    _isSelectingPlace = true;  // Prevent search from triggering
+
     final address = await _reverseGeocode(LatLng(lat, lng));
     locationController.text = address ?? '';
     initialLocation.value = LatLng(lat, lng);
@@ -926,10 +906,11 @@ class SelectRouteWithMapController extends GetxController {
 
     // Draw polyline if destination is set
     if (_isDestinationSet()) {
-      await calculateRouteFromAddresses(initialLocation.value, selectedDestination!);
+      await calculateRouteFromAddresses(initialLocation.value, selectedDestination.value!);
     }
 
     clearPickupSuggestions();
+    _isSelectingPlace = false;  // Re-enable search
     update();
   }
 }

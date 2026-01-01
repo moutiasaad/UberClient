@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_colors.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_icons.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_size.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/font_family.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/home/home_screen.dart';
+import 'package:tshl_tawsil/config/app_colors.dart';
+import 'package:tshl_tawsil/config/app_icons.dart';
+import 'package:tshl_tawsil/config/app_size.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
+import 'package:tshl_tawsil/config/font_family.dart';
+import 'package:tshl_tawsil/view/home/home_screen.dart';
+import 'package:tshl_tawsil/controllers/home_controller.dart';
 
 class CancellationPopup extends StatelessWidget {
   const CancellationPopup({super.key});
@@ -71,7 +72,16 @@ class CancellationPopup extends StatelessWidget {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () {
+                      onTap: () async {
+                        // Reload home controller to ensure fresh state
+                        try {
+                          final homeController = Get.find<HomeController>();
+                          await homeController.loadActiveRide();
+                        } catch (e) {
+                          debugPrint('HomeController not found: $e');
+                        }
+
+                        // Navigate to home screen
                         Get.offAll(() => HomeScreen());
                       },
                       child: Container(

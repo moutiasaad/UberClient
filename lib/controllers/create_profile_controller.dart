@@ -1,21 +1,26 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:fl_country_code_picker/fl_country_code_picker.dart';
 import '../api/services/profile_service.dart';
 import '../api/client/api_client.dart';
 import '../view/home/home_screen.dart';
+import '../config/app_colors.dart';
+import '../config/app_size.dart';
+import '../config/font_family.dart';
 
 class CreateProfileController extends GetxController {
-  RxBool male = false.obs;
-  RxBool female = false.obs;
-  RxBool other = false.obs;
-  RxBool check = true.obs;
-
   // Text controllers
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController referralCodeController = TextEditingController();
+  final TextEditingController mobileController = TextEditingController();
+
+  // Country picker
+  final countryTextController = TextEditingController();
+  FlCountryCodePicker? countryPicker;
+  CountryCode? countryCode;
+  RxBool isChanged = false.obs;
+  RxBool isValidPhoneNumber = false.obs;
 
   // API service
   final ProfileService _profileService = ProfileService();
@@ -29,6 +34,24 @@ class CreateProfileController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+
+    // Initialize country picker with Qatar as default
+    countryPicker = const FlCountryCodePicker(
+      countryTextStyle: TextStyle(
+        color: AppColors.blackTextColor,
+        fontFamily: FontFamily.latoMedium,
+        fontSize: AppSize.size16,
+      ),
+      dialCodeTextStyle: TextStyle(
+          color: AppColors.smallTextColor,
+          fontSize: AppSize.size14,
+          fontFamily: FontFamily.latoRegular),
+    );
+
+    // Set default country code to Qatar (+974)
+    countryCode = CountryCode(name: 'Qatar', code: 'QA', dialCode: '+974');
+    countryTextController.text = 'Qatar';
+    isChanged.value = true;
 
     print('=== CREATE PROFILE INIT ===');
 
@@ -47,24 +70,18 @@ class CreateProfileController extends GetxController {
     print('=== END INIT ===');
   }
 
-  String getGender() {
-    if (male.value) return 'male';
-    if (female.value) return 'female';
-    if (other.value) return 'other';
-    return '';
+  void checkPhoneNumberValidity(String phoneNumber) {
+    isValidPhoneNumber.value = phoneNumber.length == 10;
   }
 
   // Complete profile (user is already authenticated after OTP)
   Future<void> completeRegistration() async {
     final name = nameController.text.trim();
-    final email = emailController.text.trim();
-    final phone = phoneController.text.trim();
+    final phone = mobileController.text.trim();
 
     print('=== COMPLETE PROFILE CALLED ===');
     print('Name: $name');
-    print('Email: $email');
     print('Phone: $phone');
-    print('Check: ${check.value}');
     print('====================');
 
     // Validation
@@ -74,25 +91,28 @@ class CreateProfileController extends GetxController {
       return;
     }
 
-    if (!check.value) {
-      Fluttertoast.showToast(msg: 'Please accept terms and conditions');
-      print('Validation failed: Terms not accepted');
+    if (phone.isEmpty) {
+      Fluttertoast.showToast(msg: 'Please enter your phone number');
+      print('Validation failed: Phone is empty');
       return;
     }
 
     try {
       isLoading.value = true;
 
+      // Build phone number with country code
+      final fullPhone = '${countryCode?.dialCode ?? '+974'}$phone';
+
       print('=== UPDATING PROFILE ===');
       print('Endpoint: PUT /customer/profile');
-      print('Data: name=$name, email=$email');
+      print('Data: name=$name, phone=$fullPhone');
       print('====================');
 
       // User is already authenticated after OTP verification
       // Just update their profile information
       final updatedUser = await _profileService.updateProfile(
         name: name,
-        email: email.isNotEmpty ? email : null,
+        phone: fullPhone,
       );
 
       print('=== PROFILE UPDATE SUCCESS ===');
@@ -142,8 +162,8 @@ class CreateProfileController extends GetxController {
   void onClose() {
     nameController.dispose();
     emailController.dispose();
-    phoneController.dispose();
-    referralCodeController.dispose();
+    mobileController.dispose();
+    countryTextController.dispose();
     super.onClose();
   }
 }

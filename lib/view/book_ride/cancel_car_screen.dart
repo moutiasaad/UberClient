@@ -4,10 +4,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/cancel_car_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/widget/cancellation_popup.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
+import 'package:tshl_tawsil/controllers/cancel_car_controller.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/view/widget/cancellation_popup.dart';
 
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';
@@ -25,6 +25,12 @@ class CancelCarScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     languageController.loadSelectedLanguage();
+
+    // Set the ride ID in the controller
+    if (rideId != null) {
+      cancelCarController.currentRideId = rideId;
+    }
+
     return Center(
       child: Container(
         color: AppColors.backGroundColor,
@@ -210,39 +216,62 @@ class CancelCarScreen extends StatelessWidget {
   }
 
   _bottomBarButton(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        showDialog(
-          context: context,
-          builder: (context) {
-            return const CancellationPopup();
-          },
-        );
-      },
-      child: Container(
-        height: AppSize.size54,
-        margin: const EdgeInsets.only(
-          top: AppSize.size12,
-          left: AppSize.size20,
-          right: AppSize.size20,
-          bottom: AppSize.size10
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.blackTextColor,
-          borderRadius: BorderRadius.circular(AppSize.size10),
-        ),
-        child: const Center(
-          child: Text(
-            AppStrings.submit,
-            style: TextStyle(
-              fontSize: AppSize.size16,
-              fontWeight: FontWeight.w600,
-              fontFamily: FontFamily.latoSemiBold,
-              color: AppColors.backGroundColor,
-            ),
+    return Obx(() {
+      bool isLoading = cancelCarController.isCancelling.value;
+
+      return GestureDetector(
+        onTap: isLoading ? null : () async {
+          // Call the API to cancel the ride
+          final success = await cancelCarController.cancelRide();
+
+          // Only show popup if cancellation was successful
+          if (success) {
+            showDialog(
+              context: context,
+              builder: (context) {
+                return const CancellationPopup();
+              },
+            );
+          }
+        },
+        child: Container(
+          height: AppSize.size54,
+          margin: const EdgeInsets.only(
+            top: AppSize.size12,
+            left: AppSize.size20,
+            right: AppSize.size20,
+            bottom: AppSize.size10
+          ),
+          decoration: BoxDecoration(
+            color: isLoading
+                ? AppColors.blackTextColor.withOpacity(0.6)
+                : AppColors.blackTextColor,
+            borderRadius: BorderRadius.circular(AppSize.size10),
+          ),
+          child: Center(
+            child: isLoading
+                ? const SizedBox(
+                    width: AppSize.size20,
+                    height: AppSize.size20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.backGroundColor,
+                      ),
+                    ),
+                  )
+                : const Text(
+                    AppStrings.submit,
+                    style: TextStyle(
+                      fontSize: AppSize.size16,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: FontFamily.latoSemiBold,
+                      color: AppColors.backGroundColor,
+                    ),
+                  ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 }

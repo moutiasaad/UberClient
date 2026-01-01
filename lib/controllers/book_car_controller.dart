@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_strings.dart';
+import 'package:tshl_tawsil/config/app_strings.dart';
 
 class BookCarController extends GetxController {
   RxBool isBookingOpen = false.obs;

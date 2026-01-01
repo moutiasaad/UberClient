@@ -4,10 +4,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:prime_taxi_flutter_ui_kit/config/app_images.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/chat_with_driver_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/controllers/language_controller.dart';
-import 'package:prime_taxi_flutter_ui_kit/view/book_ride/call_with_driver_screen.dart';
+import 'package:tshl_tawsil/config/app_images.dart';
+import 'package:tshl_tawsil/controllers/chat_with_driver_controller.dart';
+import 'package:tshl_tawsil/controllers/language_controller.dart';
+import 'package:tshl_tawsil/view/book_ride/call_with_driver_screen.dart';
 
 import '../../config/app_colors.dart';
 import '../../config/app_icons.dart';
