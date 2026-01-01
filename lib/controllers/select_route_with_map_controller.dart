@@ -61,11 +61,11 @@ class SelectRouteWithMapController extends GetxController {
   Rx<LatLng> userLocation = const LatLng(0, 0).obs;
   RxInt selectedServiceIndex = 0.obs;
   TextEditingController locationController =
-      TextEditingController(text: homeController.userAddress.value);
+  TextEditingController(text: homeController.userAddress.value);
   TextEditingController destinationController =
-      TextEditingController(text: '');
+  TextEditingController(text: '');
   TextEditingController addStopController =
-      TextEditingController(text: AppStrings.stopDestination);
+  TextEditingController(text: AppStrings.stopDestination);
   RxSet<Polyline> polylines = <Polyline>{}.obs;
   RxBool showPolyline = false.obs;
   final PolylinePoints polylinePoints = PolylinePoints(apiKey: 'AIzaSyCrDYCXAVQZeXxbZx84iRVe5SMmBpm5sy8');
@@ -610,7 +610,7 @@ class SelectRouteWithMapController extends GetxController {
       LatLng destinationLatLng = selectedDestination.value!;
       polylines.clear();
       markers.removeWhere(
-          (marker) => marker.markerId.value == AppStrings.destinationMarker);
+              (marker) => marker.markerId.value == AppStrings.destinationMarker);
       addCustomMarker(
         destinationLatLng,
         AppStrings.destinationMarker,
@@ -630,15 +630,15 @@ class SelectRouteWithMapController extends GetxController {
   }
 
   Future<void> calculateRouteAndDrawPolyline(
-    LatLng destination,
-  ) async {
+      LatLng destination,
+      ) async {
     await drawRoute(initialLocation.value, destination);
   }
 
   void swapItems() {
     final temp = routeListTiles[routeListTiles.length - 2];
     routeListTiles[routeListTiles.length - 2] =
-        routeListTiles[routeListTiles.length - 1];
+    routeListTiles[routeListTiles.length - 1];
     routeListTiles[routeListTiles.length - 1] = temp;
 
     // Also swap the actual location data
@@ -723,13 +723,13 @@ class SelectRouteWithMapController extends GetxController {
   // Check if pickup location has been set by user
   bool _isPickupSet() {
     return initialLocation.value.latitude != 25.2854 ||
-           initialLocation.value.longitude != 51.5310;
+        initialLocation.value.longitude != 51.5310;
   }
 
   // Check if destination has been set by user
   bool _isDestinationSet() {
     return selectedDestination.value != null &&
-           (selectedDestination.value!.latitude != 25.2854 ||
+        (selectedDestination.value!.latitude != 25.2854 ||
             selectedDestination.value!.longitude != 51.5310);
   }
 

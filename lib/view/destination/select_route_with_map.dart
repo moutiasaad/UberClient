@@ -29,7 +29,7 @@ class SelectRouteWithMapScreen extends StatelessWidget {
   }) : super(key: key);
 
   SelectRouteWithMapController selectRouteWithMapController =
-      Get.put(SelectRouteWithMapController());
+  Get.put(SelectRouteWithMapController());
   final LanguageController languageController = Get.put(LanguageController());
   BookRideController bookRideController = Get.put(BookRideController());
 
@@ -85,7 +85,7 @@ class SelectRouteWithMapScreen extends StatelessWidget {
       automaticallyImplyLeading: false,
       title: Padding(
         padding:
-            const EdgeInsets.only(left: AppSize.size5, top: AppSize.size10),
+        const EdgeInsets.only(left: AppSize.size5, top: AppSize.size10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -102,7 +102,7 @@ class SelectRouteWithMapScreen extends StatelessWidget {
             ),
             const Padding(
               padding:
-                  EdgeInsets.only(left: AppSize.size12, right: AppSize.size12),
+              EdgeInsets.only(left: AppSize.size12, right: AppSize.size12),
               child: Text(
                 AppStrings.selectRoute,
                 style: TextStyle(
@@ -134,7 +134,7 @@ class SelectRouteWithMapScreen extends StatelessWidget {
             height: double.infinity,
             color: AppColors.backGroundColor,
             child: Obx(
-              () => GoogleMap(
+                  () => GoogleMap(
                 myLocationEnabled: false,
                 myLocationButtonEnabled: false,
                 zoomControlsEnabled: false,
@@ -249,7 +249,7 @@ class SelectRouteWithMapScreen extends StatelessWidget {
             children: [
               // Input fields container
               Obx(
-                () => Stack(
+                    () => Stack(
                   alignment: languageController.arb.value
                       ? Alignment.topRight
                       : Alignment.topLeft,
@@ -282,7 +282,7 @@ class SelectRouteWithMapScreen extends StatelessWidget {
                               direction: Axis.horizontal,
                               alignment: WrapAlignment.center,
                               lineLength:
-                                  kIsWeb ? AppSize.size680 : AppSize.size255,
+                              kIsWeb ? AppSize.size680 : AppSize.size255,
                               lineThickness: AppSize.size1,
                               dashLength: AppSize.size4,
                               dashColor: AppColors.smallTextColor
@@ -440,20 +440,20 @@ class SelectRouteWithMapScreen extends StatelessWidget {
               ),
               suffixIcon: controller.text.isNotEmpty
                   ? GestureDetector(
-                      onTap: () {
-                        controller.clear();
-                        if (isPickup) {
-                          selectRouteWithMapController.clearPickupSuggestions();
-                        } else {
-                          selectRouteWithMapController.clearDestinationSuggestions();
-                        }
-                      },
-                      child: const Icon(
-                        Icons.clear,
-                        size: AppSize.size18,
-                        color: AppColors.smallTextColor,
-                      ),
-                    )
+                onTap: () {
+                  controller.clear();
+                  if (isPickup) {
+                    selectRouteWithMapController.clearPickupSuggestions();
+                  } else {
+                    selectRouteWithMapController.clearDestinationSuggestions();
+                  }
+                },
+                child: const Icon(
+                  Icons.clear,
+                  size: AppSize.size18,
+                  color: AppColors.smallTextColor,
+                ),
+              )
                   : null,
             ),
             style: const TextStyle(
@@ -806,21 +806,21 @@ class SelectRouteWithMapScreen extends StatelessWidget {
             child: Center(
               child: isCompleted && step < 3
                   ? const Icon(
-                      Icons.check,
-                      size: AppSize.size16,
-                      color: AppColors.backGroundColor,
-                    )
+                Icons.check,
+                size: AppSize.size16,
+                color: AppColors.backGroundColor,
+              )
                   : Text(
-                      '$step',
-                      style: TextStyle(
-                        fontSize: AppSize.size14,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: FontFamily.latoSemiBold,
-                        color: isCompleted
-                            ? AppColors.backGroundColor
-                            : AppColors.smallTextColor,
-                      ),
-                    ),
+                '$step',
+                style: TextStyle(
+                  fontSize: AppSize.size14,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: FontFamily.latoSemiBold,
+                  color: isCompleted
+                      ? AppColors.backGroundColor
+                      : AppColors.smallTextColor,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: AppSize.size4),
