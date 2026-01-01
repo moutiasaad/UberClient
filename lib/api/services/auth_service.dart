@@ -64,9 +64,17 @@ class AuthService {
       // Store token and user data
       if (authResponse.token != null) {
         await _saveAuthData(authResponse.token!, authResponse.user);
+        print('🔐 Auth token saved successfully');
 
         // Send FCM token to server after successful login
-        await sendFcmToken();
+        // Using try-catch to ensure it doesn't block navigation
+        try {
+          print('📱 Starting FCM token process...');
+          final fcmResult = await sendFcmToken();
+          print('📱 FCM send completed: $fcmResult');
+        } catch (fcmError) {
+          print('⚠️ FCM token error (non-blocking): $fcmError');
+        }
       }
 
       return authResponse;
@@ -78,13 +86,21 @@ class AuthService {
   /// Send FCM token to server
   Future<Map<String, dynamic>?> sendFcmToken() async {
     try {
+      print('📱 Getting FCM token...');
       final fcmToken = await FirebaseMessaging.instance.getToken();
-      if (fcmToken == null) return null;
+
+      if (fcmToken == null) {
+        print('❌ FCM token is null');
+        return null;
+      }
+
+      print('📱 FCM Token: $fcmToken');
 
       // Save FCM token locally
       await StorageController.instance.setString(ApiConstants.fcmTokenKey, fcmToken);
 
-      final response = await _apiClient.post(
+      print('📤 Sending FCM token to server...');
+      final response = await _apiClient.put(
         ApiConstants.customerFcmToken,
         body: {
           'fcm_token': fcmToken,
@@ -92,8 +108,10 @@ class AuthService {
         requiresAuth: true,
       );
 
+      print('✅ FCM token sent successfully: $response');
       return response;
     } catch (e) {
+      print('❌ Error sending FCM token: $e');
       // Don't throw - FCM token sending is not critical
       return null;
     }
