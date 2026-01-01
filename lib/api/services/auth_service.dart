@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../client/api_client.dart';
 import '../constants/api_constants.dart';
 import '../../models/auth_response_model.dart';
@@ -63,11 +64,38 @@ class AuthService {
       // Store token and user data
       if (authResponse.token != null) {
         await _saveAuthData(authResponse.token!, authResponse.user);
+
+        // Send FCM token to server after successful login
+        await sendFcmToken();
       }
 
       return authResponse;
     } catch (e) {
       rethrow;
+    }
+  }
+
+  /// Send FCM token to server
+  Future<Map<String, dynamic>?> sendFcmToken() async {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken == null) return null;
+
+      // Save FCM token locally
+      await StorageController.instance.setString(ApiConstants.fcmTokenKey, fcmToken);
+
+      final response = await _apiClient.post(
+        ApiConstants.customerFcmToken,
+        body: {
+          'fcm_token': fcmToken,
+        },
+        requiresAuth: true,
+      );
+
+      return response;
+    } catch (e) {
+      // Don't throw - FCM token sending is not critical
+      return null;
     }
   }
 
